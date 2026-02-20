@@ -17,3 +17,8 @@ LanChatServer/Updates/publish.lock
 LanChatServer/**/lanchat.db
 LanChatServer/**/lanchat.db-shm
 LanChatServer/**/lanchat.db-wal
+
+# runtime artefacts - do not track
+LanChatServer/Updates/
+LanChatServer/Data/
+LanChatServer/logs/
