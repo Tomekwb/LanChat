@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "LpEWpuDBJJ9kz57VmFXllX9C9wHb0jzcG5a1cI2NtHI=",
+  "Source": "LanChatServer",
+  "BasePath": "_content/LanChatServer",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

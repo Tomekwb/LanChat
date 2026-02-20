@@ -1,0 +1,77 @@
+﻿<Window x:Class="LanChatClient.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:tb="clr-namespace:Hardcodet.Wpf.TaskbarNotification;assembly=Hardcodet.NotifyIcon.Wpf"
+        Title="LAN Chat" Height="560" Width="360"
+        WindowStartupLocation="CenterScreen"
+        Icon="pack://application:,,,/Assets/chat.ico">
+
+    <Grid Margin="10">
+        <tb:TaskbarIcon x:Name="TrayIcon"
+                        ToolTipText="LAN Chat"
+                        IconSource="pack://application:,,,/Assets/chat.ico"
+                        Visibility="Visible">
+            <tb:TaskbarIcon.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Pokaż listę" Click="Tray_Show_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Wyjdź" Click="Tray_Exit_Click"/>
+                </ContextMenu>
+            </tb:TaskbarIcon.ContextMenu>
+        </tb:TaskbarIcon>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" FontWeight="Bold" Text="Kontakty" Margin="0,0,0,6"/>
+
+            <!-- Lista kontaktów: zawsze widoczna, online/offline -->
+            <ListBox Grid.Row="1" x:Name="UsersList" MouseDoubleClick="UsersList_DoubleClick">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="18"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- kropka statusu -->
+                            <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,6,0">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="#B0B0B0"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                                                <Setter Property="Fill" Value="#21A366"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+
+                            <!-- Nazwa + komputer -->
+                            <TextBlock Grid.Column="1" Text="{Binding Display}" VerticalAlignment="Center"/>
+
+                            <!-- status -->
+                            <TextBlock Grid.Column="2" Text="{Binding Status}" Opacity="0.75" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Button Grid.Row="2"
+                    Content="Zmień nazwę użytkownika"
+                    Margin="0,10,0,0"
+                    Height="32"
+                    Click="ChangeName_Click"/>
+
+            <TextBlock Grid.Row="3" x:Name="StatusText" Margin="0,8,0,0" TextWrapping="Wrap"/>
+        </Grid>
+    </Grid>
+</Window>
