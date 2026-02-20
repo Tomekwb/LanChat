@@ -1,0 +1,19 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/*.suo
+**/*.cache
+**/*.pdb
+**/publish/
+**/TestResults/
+
+# LanChat runtime / updates
+LanChatServer/Updates/*.zip
+LanChatServer/Updates/publish_log.txt
+LanChatServer/Updates/publish.lock
+
+# SQLite runtime (jeśli nie chcesz wersjonować bazy)
+LanChatServer/**/lanchat.db
+LanChatServer/**/lanchat.db-shm
+LanChatServer/**/lanchat.db-wal
