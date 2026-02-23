@@ -12,11 +12,11 @@ using System.Reflection;
 
 [assembly: System.Reflection.AssemblyCompanyAttribute("LanChatClient")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
-[assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.10.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.10+4330e0be9ad616c94730104b308fd9ae23bdd898")]
+[assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.11.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.11+690626dc280ec06937ea78b5e2731bc0fe43b074")]
 [assembly: System.Reflection.AssemblyProductAttribute("LanChatClient")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LanChatClient")]
-[assembly: System.Reflection.AssemblyVersionAttribute("1.0.10.0")]
+[assembly: System.Reflection.AssemblyVersionAttribute("1.0.11.0")]
 [assembly: System.Runtime.Versioning.TargetPlatformAttribute("Windows7.0")]
 [assembly: System.Runtime.Versioning.SupportedOSPlatformAttribute("Windows7.0")]
 

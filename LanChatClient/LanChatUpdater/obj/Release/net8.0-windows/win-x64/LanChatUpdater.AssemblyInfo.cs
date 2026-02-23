@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LanChatUpdater")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+39b93b51f51eb40272b04e42b65f38b1daac7d27")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+690626dc280ec06937ea78b5e2731bc0fe43b074")]
 [assembly: System.Reflection.AssemblyProductAttribute("LanChatUpdater")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LanChatUpdater")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
