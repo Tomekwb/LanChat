@@ -48,19 +48,24 @@ public partial class ChatWindow : Window
         SendNow();
     }
 
-    private void MessageText_KeyDown(object sender, KeyEventArgs e)
+    private void MessageText_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
-            SendNow();
+            // Shift+Enter -> nowa linia (pozwalamy TextBoxowi ją dodać)
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+                return;
+
+            // Enter -> blokujemy dodanie nowej linii i wysyłamy
             e.Handled = true;
+            SendNow();
         }
     }
 
     private void SendNow()
     {
-        var msg = (MessageText.Text ?? "").Trim();
-        if (msg.Length == 0) return;
+        var msg = MessageText.Text ?? "";
+        if (string.IsNullOrWhiteSpace(msg)) return;
 
         AddMessage(_me, msg);
         _send(_peer, msg);

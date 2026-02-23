@@ -8,6 +8,6 @@ build_property.PlatformNeutralAssembly =
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = LanChatUpdater
-build_property.ProjectDir = C:\LanChatClient\LanChatUpdater\
+build_property.ProjectDir = C:\LanChat\src\LanChatClient\LanChatUpdater\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 

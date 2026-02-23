@@ -76,7 +76,7 @@ namespace LanChatClient {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/LanChatClient;V1.0.7.0;component/chatwindow.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/LanChatClient;V1.0.10.0;component/chatwindow.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\ChatWindow.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

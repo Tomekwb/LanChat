@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v8.0": {
-      "LanChatClient/1.0.7": {
+      "LanChatClient/1.0.10": {
         "dependencies": {
           "Hardcodet.NotifyIcon.Wpf": "2.0.1",
           "Microsoft.AspNetCore.SignalR.Client": "8.0.11",
@@ -194,7 +194,7 @@
     }
   },
   "libraries": {
-    "LanChatClient/1.0.7": {
+    "LanChatClient/1.0.10": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

@@ -32,11 +32,13 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBox x:Name="MessageText"
-                             Grid.Column="0"
-                             Margin="0,0,10,0"
-                             Height="32"
-                             VerticalContentAlignment="Center"
-                             KeyDown="MessageText_KeyDown"/>
+						 Grid.Column="0"
+						 Margin="0,0,10,0"
+						 MinHeight="60"
+						 AcceptsReturn="True"
+						 TextWrapping="Wrap"
+						 VerticalScrollBarVisibility="Auto"
+						 PreviewKeyDown="MessageText_PreviewKeyDown"/>
 
                     <Button Content="Wyślij"
                             Grid.Column="1"

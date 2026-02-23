@@ -859,13 +859,13 @@
     "C:\\Users\\Tomek\\.nuget\\packages\\": {}
   },
   "project": {
-    "version": "1.0.7",
+    "version": "1.0.10",
     "restore": {
-      "projectUniqueName": "C:\\LanChatClient\\LanChatClient\\LanChatClient.csproj",
+      "projectUniqueName": "C:\\LanChat\\src\\LanChatClient\\LanChatClient\\LanChatClient.csproj",
       "projectName": "LanChatClient",
-      "projectPath": "C:\\LanChatClient\\LanChatClient\\LanChatClient.csproj",
+      "projectPath": "C:\\LanChat\\src\\LanChatClient\\LanChatClient\\LanChatClient.csproj",
       "packagesPath": "C:\\Users\\Tomek\\.nuget\\packages\\",
-      "outputPath": "C:\\LanChatClient\\LanChatClient\\obj\\",
+      "outputPath": "C:\\LanChat\\src\\LanChatClient\\LanChatClient\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Tomek\\AppData\\Roaming\\NuGet\\NuGet.Config"

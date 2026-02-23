@@ -1,9 +1,17 @@
+# FILE_VERSION: Publish-LanChat.ps1 v1.1 (2026-02-20)
+# Purpose: Publish client+updater -> ZIP + version.json (runtime Updates), with SHA256 and version verification.
+# Note: ProductVersion may include "+<git-hash>" (InformationalVersion). We compare only the prefix before '+'.
+
 #requires -Version 5.1
 [CmdletBinding()]
 param(
-  [string]$ClientProjDir  = "C:\LanChatClient\LanChatClient",
-  [string]$UpdaterProjDir = "C:\LanChatClient\LanChatUpdater",
-  [string]$UpdatesDir     = "C:\LanChatServer\Updates",
+  # === NOWE DOMYŚLNE ŚCIEŻKI (po przeniesieniu do repo) ===
+  [string]$ClientProjDir  = "C:\LanChat\src\LanChatClient\LanChatClient",
+  [string]$UpdaterProjDir = "C:\LanChat\src\LanChatClient\LanChatUpdater",
+
+  # === RUNTIME (poza repo) ===
+  [string]$UpdatesDir     = "C:\LanChat\runtime\server\Updates",
+
   [string]$BaseUpdatesUrl = "http://192.168.64.233:5001/updates",
   [string]$ExeName        = "LanChatClient.exe"
 )
@@ -58,9 +66,16 @@ function Get-PublishDir([string]$projDir) {
   return $p
 }
 
-function Get-ExeProductVersion([string]$exePath) {
+function Normalize-VersionString([string]$v) {
+  if ([string]::IsNullOrWhiteSpace($v)) { return $v }
+  # InformationalVersion often is "1.0.8+<hash>" -> we compare only prefix
+  return ($v.Split('+')[0]).Trim()
+}
+
+function Get-ExeProductVersionNormalized([string]$exePath) {
   if (!(Test-Path $exePath)) { throw "Missing EXE for verification: $exePath" }
-  return (Get-Item $exePath).VersionInfo.ProductVersion
+  $pv = (Get-Item $exePath).VersionInfo.ProductVersion
+  return (Normalize-VersionString $pv)
 }
 
 # --- LOCK (avoid running twice) ---
@@ -100,10 +115,10 @@ try {
     if (($confirm ?? "").Trim().ToUpperInvariant() -eq "Y") {
       $targetVer = $suggested
     } else {
-      $targetVer = Read-Host "Enter version manually (e.g. 1.0.7)"
+      $targetVer = Read-Host "Enter version manually (e.g. 1.0.8)"
     }
   } else {
-    $targetVer = Read-Host "Enter version manually (e.g. 1.0.7)"
+    $targetVer = Read-Host "Enter version manually (e.g. 1.0.8)"
   }
 
   $targetVer = ($targetVer ?? "").Trim()
@@ -111,7 +126,7 @@ try {
 
   $verObj = $null
   if (-not [version]::TryParse($targetVer, [ref]$verObj)) {
-    throw "Invalid version format: $targetVer (expected e.g. 1.0.7)"
+    throw "Invalid version format: $targetVer (expected e.g. 1.0.8)"
   }
 
   $before = Read-CsprojVersion $clientCsproj
@@ -141,6 +156,22 @@ try {
     Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zipPath -Force
     $sha = (Get-FileHash $zipPath -Algorithm SHA256).Hash
 
+    # 1) VERIFY ZIP FIRST (avoid half-publish)
+    $checkDir = Join-Path $env:TEMP ("ZipCheck_" + [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $checkDir | Out-Null
+    try {
+      Expand-Archive -Path $zipPath -DestinationPath $checkDir -Force
+      $exeInZip = Join-Path $checkDir $ExeName
+      $pvNorm = Get-ExeProductVersionNormalized $exeInZip
+      if ($pvNorm -ne $targetVer) {
+        throw "MISMATCH: target=$targetVer but EXE in ZIP ProductVersion(normalized)=$pvNorm. Aborting publish."
+      }
+    }
+    finally {
+      if (Test-Path $checkDir) { Remove-Item $checkDir -Recurse -Force }
+    }
+
+    # 2) WRITE version.json AFTER successful verification
     $versionJsonPath = Join-Path $UpdatesDir "version.json"
     $json = @{
       version = $targetVer
@@ -150,20 +181,6 @@ try {
     } | ConvertTo-Json -Depth 3
 
     Set-Content -Path $versionJsonPath -Value $json -Encoding UTF8
-
-    $checkDir = Join-Path $env:TEMP ("ZipCheck_" + [guid]::NewGuid().ToString("N"))
-    New-Item -ItemType Directory -Path $checkDir | Out-Null
-    try {
-      Expand-Archive -Path $zipPath -DestinationPath $checkDir -Force
-      $exeInZip = Join-Path $checkDir $ExeName
-      $pv = Get-ExeProductVersion $exeInZip
-      if ($pv -ne $targetVer) {
-        throw "MISMATCH: version.json=$targetVer but EXE in ZIP has ProductVersion=$pv. Aborting publish."
-      }
-    }
-    finally {
-      if (Test-Path $checkDir) { Remove-Item $checkDir -Recurse -Force }
-    }
 
     $len = (Get-Item $zipPath).Length
     Write-Log "PUBLISH OK: version=$targetVer sha256=$sha zipBytes=$len zip=$zipPath"
@@ -194,3 +211,5 @@ try {
 finally {
   if ($lockStream) { $lockStream.Dispose() }
 }
+
+# FILE_VERSION_END: Publish-LanChat.ps1 v1.1 (2026-02-20)

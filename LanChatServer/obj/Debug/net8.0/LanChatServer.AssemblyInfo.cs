@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LanChatServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5047d6574a299e55437bad6ee95056fcbf9fd44d")]
 [assembly: System.Reflection.AssemblyProductAttribute("LanChatServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LanChatServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

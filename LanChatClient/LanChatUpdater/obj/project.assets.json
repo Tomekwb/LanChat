@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\LanChatClient\\LanChatUpdater\\LanChatUpdater.csproj",
+      "projectUniqueName": "C:\\LanChat\\src\\LanChatClient\\LanChatUpdater\\LanChatUpdater.csproj",
       "projectName": "LanChatUpdater",
-      "projectPath": "C:\\LanChatClient\\LanChatUpdater\\LanChatUpdater.csproj",
+      "projectPath": "C:\\LanChat\\src\\LanChatClient\\LanChatUpdater\\LanChatUpdater.csproj",
       "packagesPath": "C:\\Users\\Tomek\\.nuget\\packages\\",
-      "outputPath": "C:\\LanChatClient\\LanChatUpdater\\obj\\",
+      "outputPath": "C:\\LanChat\\src\\LanChatClient\\LanChatUpdater\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Tomek\\AppData\\Roaming\\NuGet\\NuGet.Config"

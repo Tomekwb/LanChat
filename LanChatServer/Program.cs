@@ -16,8 +16,11 @@ builder.Services.AddCors(o =>
 
 builder.Services.AddSignalR();
 
-// SQLite (plik bazy w C:\LanChatServer\Data\lanchat.db)
-var dbPath = Path.Combine(AppContext.BaseDirectory, "Data", "lanchat.db");
+// === RUNTIME ROOT (poza repo) ===
+var runtimeRoot = @"C:\LanChat\runtime\server";
+
+// === SQLite DB (poza repo): C:\LanChat\runtime\server\Data\lanchat.db ===
+var dbPath = Path.Combine(runtimeRoot, "Data", "lanchat.db");
 Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
 builder.Services.AddDbContext<LanChatDb>(opt =>
@@ -29,8 +32,8 @@ var app = builder.Build();
 
 app.UseCors();
 
-// === /updates -> C:\LanChatServer\Updates ===
-var updatesPath = Path.Combine(app.Environment.ContentRootPath, "Updates");
+// === /updates -> C:\LanChat\runtime\server\Updates ===
+var updatesPath = Path.Combine(runtimeRoot, "Updates");
 Directory.CreateDirectory(updatesPath);
 
 app.UseStaticFiles(new StaticFileOptions
@@ -41,7 +44,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.MapGet("/", () => "LanChatServer OK");
 
-// UWAGA: u Ciebie klient łączy się do /chat (tak zostawiamy)
+// UWAGA: klient łączy się do /chat (tak zostawiamy)
 app.MapHub<ChatHub>("/chat");
 
 // Tworzenie bazy / tabel przy starcie (bez migracji)

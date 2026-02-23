@@ -2204,11 +2204,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\LanChatServer\\LanChatServer.csproj",
+      "projectUniqueName": "C:\\LanChat\\src\\LanChatServer\\LanChatServer.csproj",
       "projectName": "LanChatServer",
-      "projectPath": "C:\\LanChatServer\\LanChatServer.csproj",
+      "projectPath": "C:\\LanChat\\src\\LanChatServer\\LanChatServer.csproj",
       "packagesPath": "C:\\Users\\Tomek\\.nuget\\packages\\",
-      "outputPath": "C:\\LanChatServer\\obj\\",
+      "outputPath": "C:\\LanChat\\src\\LanChatServer\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Tomek\\AppData\\Roaming\\NuGet\\NuGet.Config"
