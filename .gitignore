@@ -22,3 +22,11 @@ LanChatServer/**/lanchat.db-wal
 LanChatServer/Updates/
 LanChatServer/Data/
 LanChatServer/logs/
+
+# build / publish artifacts
+**/bin/
+**/obj/
+installer/Output/
+*.exe
+ZIP
+1.0.*
