@@ -27,6 +27,9 @@ public class ChatHub : Hub
     {
         if (_connectionToUser.TryRemove(Context.ConnectionId, out var user))
         {
+            // grupy SignalR
+            try { await Groups.RemoveFromGroupAsync(Context.ConnectionId, user); } catch { }
+
             if (_userConnections.TryGetValue(user, out var conns))
             {
                 conns.TryRemove(Context.ConnectionId, out _);
@@ -59,6 +62,9 @@ public class ChatHub : Hub
             _ => new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase));
         conns[Context.ConnectionId] = 0;
 
+        // grupy SignalR: grupa ma nazwę usera
+        await Groups.AddToGroupAsync(Context.ConnectionId, user);
+
         // zapisz/odśwież w DB i ustaw online
         await SetUserOnlineState(user, isOnline: true, machine: machine);
 
@@ -89,6 +95,9 @@ public class ChatHub : Hub
     {
         if (_connectionToUser.TryRemove(Context.ConnectionId, out var user))
         {
+            // grupy SignalR
+            try { await Groups.RemoveFromGroupAsync(Context.ConnectionId, user); } catch { }
+
             if (_userConnections.TryGetValue(user, out var conns))
             {
                 conns.TryRemove(Context.ConnectionId, out _);
@@ -135,10 +144,10 @@ public class ChatHub : Hub
         _db.Messages.Add(msg);
         await _db.SaveChangesAsync();
 
-        if (recipientOnline && conns != null)
+        if (recipientOnline)
         {
-            foreach (var cid in conns.Keys)
-                await Clients.Client(cid).SendAsync("PrivateMessage", fromUser, message);
+            // wysyłamy do grupy usera (działa też przy multi-conn)
+            await Clients.Group(toUser).SendAsync("PrivateMessage", fromUser, message);
         }
     }
 
@@ -169,22 +178,22 @@ public class ChatHub : Hub
         return last;
     }
 
-public async Task<int> DeleteHistory(string otherUser)
-{
-    if (!_connectionToUser.TryGetValue(Context.ConnectionId, out var me))
-        me = "Nieznany";
+    public async Task<int> DeleteHistory(string otherUser)
+    {
+        if (!_connectionToUser.TryGetValue(Context.ConnectionId, out var me))
+            me = "Nieznany";
 
-    otherUser = (otherUser ?? "").Trim();
-    if (otherUser.Length == 0) return 0;
+        otherUser = (otherUser ?? "").Trim();
+        if (otherUser.Length == 0) return 0;
 
-    var rows = await _db.Messages
-        .Where(m =>
-            (m.FromUser == me && m.ToUser == otherUser) ||
-            (m.FromUser == otherUser && m.ToUser == me))
-        .ExecuteDeleteAsync();
+        var rows = await _db.Messages
+            .Where(m =>
+                (m.FromUser == me && m.ToUser == otherUser) ||
+                (m.FromUser == otherUser && m.ToUser == me))
+            .ExecuteDeleteAsync();
 
-    return rows;
-}
+        return rows;
+    }
 
     // NOWE: pełna lista kontaktów (online/offline)
     private async Task BroadcastRoster()

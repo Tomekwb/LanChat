@@ -2,7 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -13,7 +17,6 @@ namespace LanChatClient;
 
 public partial class MainWindow : Window
 {
-    // musi pasować do serwera: ChatHub.ClientPresence
     public class ClientPresence
     {
         public string User { get; set; } = "";
@@ -34,15 +37,11 @@ public partial class MainWindow : Window
 
     private HubConnection? _conn;
 
-    // UWAGA: musi się zgadzać z serwerem:
-    // app.MapHub<ChatHub>("/chat");
     private const string ServerHubUrl = "http://192.168.64.233:5001/chat";
+    private static readonly string ServerBaseUrl = "http://192.168.64.233:5001";
 
-    // Auto-update (HTTP)
     private const string UpdatesBaseUrl = "http://192.168.64.233:5001/updates";
     private const string InstallDir = @"C:\LanChat";
-
-    // Włącz na stacji testowej. Dopiero po potwierdzeniu działania — rollout na resztę.
     private const bool EnableAutoUpdate = true;
 
     private readonly string _cfgDir =
@@ -97,7 +96,6 @@ public partial class MainWindow : Window
 
         LoadOrAskName();
 
-        // nie blokujemy UI w konstruktorze
         Loaded += async (_, __) => await StartupAsync();
 
         Title = $"LAN Chat v{AppVersion}";
@@ -117,8 +115,6 @@ public partial class MainWindow : Window
                     InstallDir
                 );
 
-                // Jeśli updater został uruchom, klient MUSI się zamknąć,
-                // inaczej pliki w InstallDir będą zablokowane.
                 if (updated)
                 {
                     _realExit = true;
@@ -132,7 +128,6 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                // Nie blokujemy startu chatu, jeśli update ma problem — pokaż status i idziemy dalej.
                 StatusText.Text = $"AutoUpdate: błąd: {ex.Message} | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
             }
         }
@@ -248,7 +243,6 @@ public partial class MainWindow : Window
             {
                 Dispatcher.Invoke(() =>
                 {
-                    // Jeśli okno czatu już istnieje -> dodaj tylko do UI
                     if (_chatWindows.TryGetValue(from, out var win))
                     {
                         win.AddMessage(from, msg);
@@ -256,18 +250,16 @@ public partial class MainWindow : Window
                         if (win.IsActive)
                         {
                             ClearUnread(from);
-                            _pending.Remove(from); // opcjonalnie - porządek
+                            _pending.Remove(from);
                         }
                         else
                         {
                             MarkUnread(from, $"{from}: {msg}");
                         }
 
-                        // NIE zapisujemy do _pending — to powodowało duplikację
                         return;
                     }
 
-                    // Jeśli okna nie ma -> buforuj
                     if (!_pending.TryGetValue(from, out var buf))
                     {
                         buf = new List<(DateTime ts, string from, string msg)>();
@@ -280,8 +272,6 @@ public partial class MainWindow : Window
             });
 
             await _conn.StartAsync();
-
-            // Register(user, machine) – to musi pasować do serwera
             await _conn.InvokeAsync("Register", _me, _machine);
 
             StatusText.Text = $"Połączono. Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
@@ -341,11 +331,11 @@ public partial class MainWindow : Window
             if (!_historyLoaded.Contains(user))
             {
                 await LoadHistory(user, existing);
-                _pending.Remove(user);     // kluczowe: po historii pending wyrzucamy
+                _pending.Remove(user);
             }
             else
             {
-                FlushPending(user, existing); // pending ma sens tylko gdy NIE ładujesz historii
+                FlushPending(user, existing);
             }
 
             existing.Show();
@@ -365,6 +355,7 @@ public partial class MainWindow : Window
                 if (_conn is null) return 0;
                 return await _conn.InvokeAsync<int>("DeleteHistory", peer);
             },
+            UploadFileAsync,
             u => { ClearUnread(u); },
             u =>
             {
@@ -420,6 +411,34 @@ public partial class MainWindow : Window
     {
         if (_conn is null) return;
         try { await _conn.InvokeAsync("SendPrivate", toUser, message); } catch { }
+    }
+
+    private async Task<string> UploadFileAsync(string fromUser, string toUser, string filePath)
+    {
+        using var http = new HttpClient();
+
+        var url = $"{ServerBaseUrl}/files/upload";
+
+        using var form = new MultipartFormDataContent();
+
+        form.Add(new StringContent(fromUser), "fromUser");
+        form.Add(new StringContent(toUser), "toUser");
+
+        var fileBytes = await File.ReadAllBytesAsync(filePath);
+        var fileContent = new ByteArrayContent(fileBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        form.Add(fileContent, "file", Path.GetFileName(filePath));
+
+        var resp = await http.PostAsync(url, form);
+        resp.EnsureSuccessStatusCode();
+
+        var json = await resp.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+
+        if (!doc.RootElement.TryGetProperty("body", out var bodyEl))
+            throw new Exception("Brak 'body' w odpowiedzi serwera");
+
+        return bodyEl.GetString() ?? "";
     }
 
     private void UsersList_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
