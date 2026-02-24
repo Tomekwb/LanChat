@@ -169,6 +169,23 @@ public class ChatHub : Hub
         return last;
     }
 
+public async Task<int> DeleteHistory(string otherUser)
+{
+    if (!_connectionToUser.TryGetValue(Context.ConnectionId, out var me))
+        me = "Nieznany";
+
+    otherUser = (otherUser ?? "").Trim();
+    if (otherUser.Length == 0) return 0;
+
+    var rows = await _db.Messages
+        .Where(m =>
+            (m.FromUser == me && m.ToUser == otherUser) ||
+            (m.FromUser == otherUser && m.ToUser == me))
+        .ExecuteDeleteAsync();
+
+    return rows;
+}
+
     // NOWE: pełna lista kontaktów (online/offline)
     private async Task BroadcastRoster()
     {

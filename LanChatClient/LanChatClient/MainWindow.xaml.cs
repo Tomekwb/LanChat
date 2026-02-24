@@ -245,39 +245,39 @@ public partial class MainWindow : Window
             });
 
             _conn.On<string, string>("PrivateMessage", (from, msg) =>
-{
-    Dispatcher.Invoke(() =>
-    {
-        // Jeśli okno czatu już istnieje -> dodaj tylko do UI
-        if (_chatWindows.TryGetValue(from, out var win))
-        {
-            win.AddMessage(from, msg);
-
-            if (win.IsActive)
-{
-    ClearUnread(from);
-    _pending.Remove(from); // opcjonalnie - porządek
-}
-            else
             {
-                MarkUnread(from, $"{from}: {msg}");
-            }
+                Dispatcher.Invoke(() =>
+                {
+                    // Jeśli okno czatu już istnieje -> dodaj tylko do UI
+                    if (_chatWindows.TryGetValue(from, out var win))
+                    {
+                        win.AddMessage(from, msg);
 
-            // NIE zapisujemy do _pending — to powodowało duplikację
-            return;
-        }
+                        if (win.IsActive)
+                        {
+                            ClearUnread(from);
+                            _pending.Remove(from); // opcjonalnie - porządek
+                        }
+                        else
+                        {
+                            MarkUnread(from, $"{from}: {msg}");
+                        }
 
-        // Jeśli okna nie ma -> buforuj
-        if (!_pending.TryGetValue(from, out var buf))
-        {
-            buf = new List<(DateTime ts, string from, string msg)>();
-            _pending[from] = buf;
-        }
+                        // NIE zapisujemy do _pending — to powodowało duplikację
+                        return;
+                    }
 
-        buf.Add((DateTime.Now, from, msg));
-        MarkUnread(from, $"{from}: {msg}");
-    });
-});
+                    // Jeśli okna nie ma -> buforuj
+                    if (!_pending.TryGetValue(from, out var buf))
+                    {
+                        buf = new List<(DateTime ts, string from, string msg)>();
+                        _pending[from] = buf;
+                    }
+
+                    buf.Add((DateTime.Now, from, msg));
+                    MarkUnread(from, $"{from}: {msg}");
+                });
+            });
 
             await _conn.StartAsync();
 
@@ -339,14 +339,14 @@ public partial class MainWindow : Window
         if (_chatWindows.TryGetValue(user, out var existing))
         {
             if (!_historyLoaded.Contains(user))
-{
-    await LoadHistory(user, existing);
-    _pending.Remove(user);     // kluczowe: po historii pending wyrzucamy
-}
-else
-{
-    FlushPending(user, existing); // pending ma sens tylko gdy NIE ładujesz historii
-}
+            {
+                await LoadHistory(user, existing);
+                _pending.Remove(user);     // kluczowe: po historii pending wyrzucamy
+            }
+            else
+            {
+                FlushPending(user, existing); // pending ma sens tylko gdy NIE ładujesz historii
+            }
 
             existing.Show();
             existing.Activate();
@@ -356,7 +356,15 @@ else
             return;
         }
 
-        var win = new ChatWindow(_me, user, SendToUser,
+        var win = new ChatWindow(
+            _me,
+            user,
+            SendToUser,
+            async (peer) =>
+            {
+                if (_conn is null) return 0;
+                return await _conn.InvokeAsync<int>("DeleteHistory", peer);
+            },
             u => { ClearUnread(u); },
             u =>
             {
@@ -367,14 +375,14 @@ else
         _chatWindows[user] = win;
 
         if (!_historyLoaded.Contains(user))
-{
-    await LoadHistory(user, win);
-    _pending.Remove(user);
-}
-else
-{
-    FlushPending(user, win);
-}
+        {
+            await LoadHistory(user, win);
+            _pending.Remove(user);
+        }
+        else
+        {
+            FlushPending(user, win);
+        }
 
         win.Show();
         win.Activate();

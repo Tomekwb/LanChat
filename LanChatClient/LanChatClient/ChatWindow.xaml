@@ -10,6 +10,64 @@
         <SolidColorBrush x:Key="Bg" Color="#F5F6F8"/>
         <SolidColorBrush x:Key="Panel" Color="White"/>
         <SolidColorBrush x:Key="Border" Color="#DADCE0"/>
+
+        <SolidColorBrush x:Key="BubbleMine" Color="#2D89EF"/>
+        <SolidColorBrush x:Key="BubbleOther" Color="#E8EAED"/>
+        <SolidColorBrush x:Key="TextMine" Color="White"/>
+        <SolidColorBrush x:Key="TextOther" Color="#202124"/>
+
+        <!-- Kontener elementu listy: tu robimy wyrównanie L/P -->
+        <Style x:Key="MessageItemStyle" TargetType="{x:Type ListBoxItem}">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMine}" Value="True">
+                    <Setter Property="HorizontalContentAlignment" Value="Right"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Szablon chmurki -->
+        <DataTemplate x:Key="MessageTemplate">
+            <Border x:Name="Bubble"
+                    Background="{StaticResource BubbleOther}"
+                    CornerRadius="12"
+                    Padding="10"
+                    Margin="0,3"
+                    MaxWidth="360">
+
+                <StackPanel>
+                    <TextBlock x:Name="Meta"
+                               FontSize="11"
+                               Opacity="0.7"
+                               Text="{Binding Meta}"
+                               Margin="0,0,0,3"/>
+
+                    <!-- ReadOnly TextBox => można zaznaczać i kopiować -->
+                    <TextBox x:Name="BodyBox"
+                             Text="{Binding Body}"
+                             IsReadOnly="True"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             TextWrapping="Wrap"
+                             Foreground="{StaticResource TextOther}"
+                             Padding="0"
+                             Margin="0"
+                             IsReadOnlyCaretVisible="False"/>
+                </StackPanel>
+            </Border>
+
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsMine}" Value="True">
+                    <Setter TargetName="Bubble" Property="Background" Value="{StaticResource BubbleMine}"/>
+                    <Setter TargetName="Meta" Property="Foreground" Value="{StaticResource TextMine}"/>
+                    <Setter TargetName="BodyBox" Property="Foreground" Value="{StaticResource TextMine}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid Margin="10" Background="{StaticResource Bg}">
@@ -21,9 +79,29 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" x:Name="TitleText" FontWeight="Bold" Text="Rozmowa" />
+                <Grid Grid.Row="0">
+    <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+    </Grid.ColumnDefinitions>
 
-                <ListBox Grid.Row="1" x:Name="ChatList" Margin="0,8,0,8"/>
+    <TextBlock Grid.Column="0" x:Name="TitleText" FontWeight="Bold" Text="Rozmowa" />
+
+    <Button Grid.Column="1"
+            Content="Usuń historię"
+            Margin="10,0,0,0"
+            Padding="10,2"
+            Click="DeleteHistory_Click"/>
+</Grid>
+
+                <ListBox Grid.Row="1"
+                         x:Name="ChatList"
+                         Margin="0,8,0,8"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ItemTemplate="{StaticResource MessageTemplate}"
+                         ItemContainerStyle="{StaticResource MessageItemStyle}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
 
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions>
@@ -32,13 +110,13 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBox x:Name="MessageText"
-						 Grid.Column="0"
-						 Margin="0,0,10,0"
-						 MinHeight="60"
-						 AcceptsReturn="True"
-						 TextWrapping="Wrap"
-						 VerticalScrollBarVisibility="Auto"
-						 PreviewKeyDown="MessageText_PreviewKeyDown"/>
+                             Grid.Column="0"
+                             Margin="0,0,10,0"
+                             MinHeight="60"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             PreviewKeyDown="MessageText_PreviewKeyDown"/>
 
                     <Button Content="Wyślij"
                             Grid.Column="1"
