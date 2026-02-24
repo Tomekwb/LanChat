@@ -1,3 +1,4 @@
+# Visual Studio / .NET
 **/bin/
 **/obj/
 **/.vs/
@@ -8,25 +9,19 @@
 **/publish/
 **/TestResults/
 
-# LanChat runtime / updates
-LanChatServer/Updates/*.zip
-LanChatServer/Updates/publish_log.txt
-LanChatServer/Updates/publish.lock
+# Installer output
+installer/Output/
 
-# SQLite runtime (jeśli nie chcesz wersjonować bazy)
-LanChatServer/**/lanchat.db
-LanChatServer/**/lanchat.db-shm
-LanChatServer/**/lanchat.db-wal
-
-# runtime artefacts - do not track
+# Runtime (server)
 LanChatServer/Updates/
 LanChatServer/Data/
 LanChatServer/logs/
 
-# build / publish artifacts
-**/bin/
-**/obj/
-installer/Output/
-*.exe
+# SQLite (jeśli nie wersjonujesz bazy)
+LanChatServer/**/lanchat.db
+LanChatServer/**/lanchat.db-shm
+LanChatServer/**/lanchat.db-wal
+
+# Accidental artifacts
 ZIP
 1.0.*
