@@ -9,6 +9,11 @@ using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.ConfigureKestrel(o =>
+{
+    o.Limits.MaxRequestBodySize = 500L * 1024 * 1024; // 500 MB
+});
+
 builder.Services.AddCors(o =>
 {
     o.AddDefaultPolicy(p => p
@@ -23,7 +28,7 @@ builder.Services.AddSignalR();
 // zwiększamy limit uploadu (domyślnie jest mały)
 builder.Services.Configure<FormOptions>(o =>
 {
-    o.MultipartBodyLengthLimit = 200 * 1024 * 1024; // 200 MB
+    o.MultipartBodyLengthLimit = 500L * 1024 * 1024; // 500 MB
 });
 
 // === RUNTIME ROOT (poza repo) ===

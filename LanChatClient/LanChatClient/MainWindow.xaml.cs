@@ -17,6 +17,7 @@ namespace LanChatClient;
 
 public partial class MainWindow : Window
 {
+    // musi pasować do serwera: ChatHub.ClientPresence
     public class ClientPresence
     {
         public string User { get; set; } = "";
@@ -37,11 +38,16 @@ public partial class MainWindow : Window
 
     private HubConnection? _conn;
 
+    // UWAGA: musi się zgadzać z serwerem:
+    // app.MapHub<ChatHub>("/chat");
     private const string ServerHubUrl = "http://192.168.64.233:5001/chat";
     private static readonly string ServerBaseUrl = "http://192.168.64.233:5001";
 
+    // Auto-update (HTTP)
     private const string UpdatesBaseUrl = "http://192.168.64.233:5001/updates";
     private const string InstallDir = @"C:\LanChat";
+
+    // Włącz na stacji testowej. Dopiero po potwierdzeniu działania — rollout na resztę.
     private const bool EnableAutoUpdate = true;
 
     private readonly string _cfgDir =
@@ -52,6 +58,8 @@ public partial class MainWindow : Window
     private readonly string _machine = Environment.MachineName;
 
     private readonly Dictionary<string, ChatWindow> _chatWindows = new(StringComparer.OrdinalIgnoreCase);
+
+    // bufor wiadomości dla okien nieotwartych
     private readonly Dictionary<string, List<(DateTime ts, string from, string msg)>> _pending =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -96,13 +104,14 @@ public partial class MainWindow : Window
 
         LoadOrAskName();
 
+        // nie blokujemy UI w konstruktorze
         Loaded += async (_, __) => await StartupAsync();
 
         Title = $"LAN Chat v{AppVersion}";
         StatusText.Text = $"Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
     }
 
-    private async System.Threading.Tasks.Task StartupAsync()
+    private async Task StartupAsync()
     {
         if (EnableAutoUpdate)
         {
@@ -115,6 +124,8 @@ public partial class MainWindow : Window
                     InstallDir
                 );
 
+                // Jeśli updater został uruchom, klient MUSI się zamknąć,
+                // inaczej pliki w InstallDir będą zablokowane.
                 if (updated)
                 {
                     _realExit = true;
@@ -128,12 +139,13 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
+                // Nie blokujemy startu chatu, jeśli update ma problem — pokaż status i idziemy dalej.
                 StatusText.Text = $"AutoUpdate: błąd: {ex.Message} | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
             }
         }
 
         StartConnection();
-        await System.Threading.Tasks.Task.CompletedTask;
+        await Task.CompletedTask;
     }
 
     protected override void OnStateChanged(EventArgs e)
@@ -239,10 +251,12 @@ public partial class MainWindow : Window
                 });
             });
 
+            // wiadomości prywatne (z serwera)
             _conn.On<string, string>("PrivateMessage", (from, msg) =>
             {
                 Dispatcher.Invoke(() =>
                 {
+                    // Jeśli okno czatu już istnieje -> dodaj tylko do UI (NIE do _pending)
                     if (_chatWindows.TryGetValue(from, out var win))
                     {
                         win.AddMessage(from, msg);
@@ -260,6 +274,7 @@ public partial class MainWindow : Window
                         return;
                     }
 
+                    // Jeśli okna nie ma -> buforuj
                     if (!_pending.TryGetValue(from, out var buf))
                     {
                         buf = new List<(DateTime ts, string from, string msg)>();
@@ -272,6 +287,8 @@ public partial class MainWindow : Window
             });
 
             await _conn.StartAsync();
+
+            // Register(user, machine) – to musi pasować do serwera
             await _conn.InvokeAsync("Register", _me, _machine);
 
             StatusText.Text = $"Połączono. Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
@@ -382,7 +399,7 @@ public partial class MainWindow : Window
         ClearUnread(user);
     }
 
-    private async System.Threading.Tasks.Task LoadHistory(string otherUser, ChatWindow win)
+    private async Task LoadHistory(string otherUser, ChatWindow win)
     {
         try
         {
@@ -413,23 +430,24 @@ public partial class MainWindow : Window
         try { await _conn.InvokeAsync("SendPrivate", toUser, message); } catch { }
     }
 
+    // upload pliku -> zwraca "body" (LCFILE|name|size|url) do pokazania jako wiadomość
     private async Task<string> UploadFileAsync(string fromUser, string toUser, string filePath)
     {
         using var http = new HttpClient();
+        http.Timeout = TimeSpan.FromMinutes(30);
 
         var url = $"{ServerBaseUrl}/files/upload";
 
         using var form = new MultipartFormDataContent();
-
         form.Add(new StringContent(fromUser), "fromUser");
         form.Add(new StringContent(toUser), "toUser");
 
-        var fileBytes = await File.ReadAllBytesAsync(filePath);
-        var fileContent = new ByteArrayContent(fileBytes);
+        await using var fs = File.OpenRead(filePath);
+        var fileContent = new StreamContent(fs);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
         form.Add(fileContent, "file", Path.GetFileName(filePath));
 
-        var resp = await http.PostAsync(url, form);
+        using var resp = await http.PostAsync(url, form);
         resp.EnsureSuccessStatusCode();
 
         var json = await resp.Content.ReadAsStringAsync();
