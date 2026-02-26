@@ -76,6 +76,9 @@ public partial class MainWindow : Window
 
     private bool _realExit = false;
 
+    // awaryjny reconnect loop (gdy Closed i auto-reconnect nie podniesie połączenia)
+    private bool _manualReconnectLoopRunning = false;
+
     private static string AppVersion =>
         (Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0");
 
@@ -144,8 +147,7 @@ public partial class MainWindow : Window
             }
         }
 
-        StartConnection();
-        await Task.CompletedTask;
+        await StartConnectionAsync();
     }
 
     protected override void OnStateChanged(EventArgs e)
@@ -230,14 +232,70 @@ public partial class MainWindow : Window
         MessageBox.Show("Zmieniono nazwę. Zamknij i uruchom aplikację ponownie.", "LAN Chat");
     }
 
-    private async void StartConnection()
+    private async Task StartConnectionAsync()
     {
         try
         {
+            // jeśli już było jakieś połączenie, spróbuj je posprzątać
+            if (_conn is not null)
+            {
+                try { await _conn.StopAsync(); } catch { }
+                try { await _conn.DisposeAsync(); } catch { }
+                _conn = null;
+            }
+
             _conn = new HubConnectionBuilder()
                 .WithUrl(ServerHubUrl)
                 .WithAutomaticReconnect()
                 .Build();
+
+            // ========== Handlery eventów połączenia (TO JEST KLUCZ) ==========
+
+            _conn.Reconnecting += error =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    StatusText.Text = $"Łączenie ponownie... {(error?.Message ?? "")} | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+                });
+                return Task.CompletedTask;
+            };
+
+            _conn.Reconnected += async connectionId =>
+            {
+                // po restarcie serwera trzeba ponownie zarejestrować presence
+                try
+                {
+                    if (_conn is not null)
+                        await _conn.InvokeAsync("Register", _me, _machine);
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        StatusText.Text = $"Połączono ponownie. Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        StatusText.Text = $"Reconnect OK, ale Register nie wyszedł: {ex.Message} | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+                    });
+                }
+            };
+
+            _conn.Closed += async error =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    StatusText.Text = $"Połączenie zamknięte. Próbuję wznowić... {(error?.Message ?? "")}";
+                });
+
+                if (_realExit) return;
+
+                // awaryjny loop (gdy auto-reconnect nie wystarczy)
+                await EnsureManualReconnectLoopAsync();
+            };
+
+            // ========== Subskrypcje wiadomości i listy online ==========
 
             _conn.On<List<ClientPresence>>("OnlineUsers", users =>
             {
@@ -291,11 +349,68 @@ public partial class MainWindow : Window
             // Register(user, machine) – to musi pasować do serwera
             await _conn.InvokeAsync("Register", _me, _machine);
 
-            StatusText.Text = $"Połączono. Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+            Dispatcher.Invoke(() =>
+            {
+                StatusText.Text = $"Połączono. Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+            });
         }
         catch (Exception ex)
         {
-            StatusText.Text = $"Błąd połączenia: {ex.Message}";
+            Dispatcher.Invoke(() =>
+            {
+                StatusText.Text = $"Błąd połączenia: {ex.Message}";
+            });
+
+            // jak start nie wyszedł, też włączamy loop
+            if (!_realExit)
+                await EnsureManualReconnectLoopAsync();
+        }
+    }
+
+    private async Task EnsureManualReconnectLoopAsync()
+    {
+        if (_manualReconnectLoopRunning) return;
+        _manualReconnectLoopRunning = true;
+
+        try
+        {
+            // krótka zwłoka żeby nie mielić CPU i dać serwerowi wstać
+            await Task.Delay(1000);
+
+            while (!_realExit)
+            {
+                try
+                {
+                    if (_conn is null)
+                    {
+                        await StartConnectionAsync();
+                        // jeśli StartConnectionAsync się uda, wyjdzie z pętli przy kolejnym warunku
+                    }
+                    else
+                    {
+                        // jeśli jest Closed/Disconnected i nie próbuje już reconnectu, spróbuj wystartować ponownie
+                        if (_conn.State != HubConnectionState.Connected &&
+                            _conn.State != HubConnectionState.Connecting &&
+                            _conn.State != HubConnectionState.Reconnecting)
+                        {
+                            await StartConnectionAsync();
+                        }
+                    }
+
+                    if (_conn is not null && _conn.State == HubConnectionState.Connected)
+                        return; // sukces
+                }
+                catch
+                {
+                    // ignorujemy i próbujemy dalej
+                }
+
+                await Task.Delay(3000);
+            }
+        }
+        finally
+        {
+            _manualReconnectLoopRunning = false;
         }
     }
 

@@ -6,8 +6,20 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting.WindowsServices;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// === Windows Service support ===
+// Dzięki temu aplikacja poprawnie integruje się z SCM (start/stop, lifetime).
+// Warunkowo: tylko jeśli realnie odpalone jako usługa.
+if (WindowsServiceHelpers.IsWindowsService())
+{
+    builder.Host.UseWindowsService(options =>
+    {
+        options.ServiceName = "LanChatServer";
+    });
+}
 
 builder.WebHost.ConfigureKestrel(o =>
 {

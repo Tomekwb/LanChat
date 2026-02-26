@@ -1,4 +1,4 @@
-# FILE_VERSION: README.md v1.2 (2026-02-23)
+# FILE_VERSION: README.md v1.3 (2026-02-26)
 
 # LanChat
 
@@ -29,7 +29,7 @@ Zawiera:
 
 Repo nie zawiera:
 - runtime
-- plików ZIP
+- plików ZIP produkcyjnych
 - bazy SQLite
 - logów
 
@@ -37,38 +37,29 @@ Repo nie zawiera:
 `C:\LanChat\runtime\server`
 
 Zawiera:
-- Updates\
-- Data\lanchat.db
-- logs\
-- publish_log.txt
-- CHANGELOG.md
+- `Updates\` (auto-update feed: ZIP + version.json)
+- `Data\lanchat.db` (SQLite)
+- `Files\` (uploady)
+- `logs\`
+- `publish_log.txt`
+- `CHANGELOG.md`
+- `app\LanChatServer.exe` (binarka serwera uruchamiana jako usługa)
 
 Serwer hostuje:
 - `/chat` (SignalR)
 - `/updates` (z runtime)
+- `/files` (static files + upload)
 
 ---
 
-## 2. Uruchomienie serwera (DEV)
+## 2. Uruchomienie serwera
 
+### Produkcja (zalecane): Windows Service
+Binarka:
+- `C:\LanChat\runtime\server\app\LanChatServer.exe`
+
+Sterowanie:
 ```bat
-cd /d C:\LanChat\src\LanChatServer && dotnet run
-
-# 3. Uruchomienie klienta (DEV)
-
-Projekt klienta znajduje się w podkatalogu rozwiązania.
-
-Ścieżka projektu: `C:\LanChat\src\LanChatClient\LanChatClient`
-
-Uruchomienie w trybie developerskim:
-
-``` bat
-cd /d C:\LanChat\src\LanChatClient\LanChatClient && dotnet run
-```
-
-Uwaga: Nie uruchamiać klienta z poziomu `C:\LanChat\src\LanChatClient`,
-ponieważ właściwy plik `.csproj` znajduje się poziom niżej.
-
-------------------------------------------------------------------------
-
-# FILE_VERSION_END: README.md v1.2 (2026-02-23)
+sc.exe start "LanChatServer"
+sc.exe stop "LanChatServer"
+sc.exe query "LanChatServer"
