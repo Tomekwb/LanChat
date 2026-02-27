@@ -1,4 +1,4 @@
-# FILE_VERSION: README.md v1.5 (2026-02-26)
+# FILE_VERSION: README.md v1.6 (2026-02-27)
 
 # LanChat
 
@@ -23,7 +23,7 @@ Zawiera:
 - LanChatClient (WPF)
 - LanChatUpdater (konsola)
 - LanChatServer (ASP.NET Core)
-- tools (Publish-LanChat.ps1, Deploy-LanChatServer.ps1)
+- tools (Publish-LanChat.ps1, Deploy-LanChatServer.ps1, **Backup-LanChat.ps1**)
 - installer (LanChatSetup.iss)
 - dokumentację
 
@@ -123,7 +123,30 @@ private static readonly bool EnableAutoUpdate = true;
 
 ---
 
-## 5. Deploy klienta
+## 5. Backup – JEDEN standard (żeby nie było chaosu)
+
+**Jedyna lokalizacja backupów:**  
+`C:\LanChatBackup\LanChat_BACKUP_YYYYMMDD_HHMMSS\`
+
+Backup zawsze obejmuje:
+- snapshot repo: `C:\LanChat\src` (bez `.git`, `bin`, `obj`)
+- snapshot produkcji: `C:\LanChat\runtime\server` (w całości: Data/Files/Updates/logs/app)
+- `MANIFEST.txt` z SHA256 + rozmiar + ścieżka względna
+
+Skrypt backupu (w repo):
+`C:\LanChat\src\LanChatServer\tools\Backup-LanChat.ps1`
+
+Uruchomienie:
+```bat
+pwsh -NoProfile -ExecutionPolicy Bypass -File "C:\LanChat\src\LanChatServer\tools\Backup-LanChat.ps1"
+```
+
+Uwaga: istniejące stare backupy ZIP (np. `LanChatClient.zip`, `LanChatServer.zip`) mogą mieć historyczne ścieżki (sprzed rozdzielenia src/runtime).
+Nowy standard to **mirror src + mirror runtime\server** w jednym katalogu.
+
+---
+
+## 6. Deploy klienta
 
 Deploy przez: `Publish-LanChat.ps1`
 
@@ -137,7 +160,7 @@ Klienci aktualizują się automatycznie przy starcie (w produkcji).
 
 ---
 
-## 6. Deploy serwera
+## 7. Deploy serwera
 
 Serwer działa jako Windows Service: `LanChatServer`
 
@@ -148,7 +171,7 @@ Deploy wykonujemy przez: `Deploy-LanChatServer.ps1`
 
 Skrypt:
 - zatrzymuje usługę
-- robi backup EXE
+- robi backup EXE (w runtime)
 - wykonuje `dotnet publish`
 - kopiuje do runtime
 - uruchamia usługę
@@ -163,7 +186,7 @@ sc.exe query LanChatServer
 
 ---
 
-## 7. Zasada: src → runtime
+## 8. Zasada: src → runtime
 
 - `src` = development + git
 - `runtime` = produkcja (dane + feed + uploady + binarka)
@@ -173,4 +196,4 @@ Najpierw test w `src`, potem publish/deploy.
 
 ---
 
-# FILE_VERSION_END: README.md v1.5 (2026-02-26)
+# FILE_VERSION_END: README.md v1.6 (2026-02-27)

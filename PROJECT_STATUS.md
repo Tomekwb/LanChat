@@ -1,4 +1,4 @@
-# FILE_VERSION: PROJECT_STATUS.md v1.4 (2026-02-26)
+# FILE_VERSION: PROJECT_STATUS.md v1.5 (2026-02-27)
 
 # LanChat – Project Status
 
@@ -14,8 +14,8 @@ Wersja produkcyjna: **1.0.16.0**
 - Reconnect po restarcie serwera działa poprawnie
 
 **Zasada AutoUpdate (DEV vs PROD):**
-- **DEBUG / `dotnet run`**: AutoUpdate **WYŁĄCZONY** (żeby DEV nie odpalał updatéra i nie uruchamiał innego EXE).
-- **RELEASE / produkcja**: AutoUpdate **WŁĄCZONY**.
+- **DEBUG / `dotnet run`**: AutoUpdate **WYŁĄCZONY**
+- **RELEASE / produkcja**: AutoUpdate **WŁĄCZONY**
 
 Implementacja (w `MainWindow.xaml.cs`):
 
@@ -45,7 +45,7 @@ Zawiera:
 - LanChatClient (WPF)
 - LanChatServer (ASP.NET Core + SignalR)
 - LanChatUpdater
-- tools (Publish-LanChat.ps1, Deploy-LanChatServer.ps1)
+- tools (Publish-LanChat.ps1, Deploy-LanChatServer.ps1, **Backup-LanChat.ps1**)
 - installer
 - dokumentację
 
@@ -111,7 +111,7 @@ Skrypt: `Deploy-LanChatServer.ps1`
 
 Efekt:
 - stop usługi
-- backup EXE
+- backup EXE (w runtime)
 - `dotnet publish`
 - kopia do `runtime\server\app`
 - start usługi
@@ -119,7 +119,27 @@ Efekt:
 
 ---
 
-## 4. Stabilne elementy systemu
+## 4. Backup – standard obowiązujący
+
+**Jedyna lokalizacja backupów:**  
+`C:\LanChatBackup\LanChat_BACKUP_YYYYMMDD_HHMMSS\`
+
+Backup zawsze obejmuje:
+- `src` snapshot (bez `.git`, `bin`, `obj`)
+- `runtime\server` snapshot (pełny: Data/Files/Updates/logs/app)
+- `MANIFEST.txt` (SHA256 + bytes + ścieżka)
+
+Skrypt:
+`C:\LanChat\src\LanChatServer\tools\Backup-LanChat.ps1`
+
+Uruchomienie:
+```bat
+pwsh -NoProfile -ExecutionPolicy Bypass -File "C:\LanChat\src\LanChatServer\tools\Backup-LanChat.ps1"
+```
+
+---
+
+## 5. Stabilne elementy systemu
 
 - SignalR chat
 - Durable messages (offline queue)
@@ -132,25 +152,26 @@ Efekt:
 
 ---
 
-## 5. Zamknięte tematy
+## 6. Zamknięte tematy
 
 - Reconnect po restarcie serwera
 - Bug podwójnej wiadomości po kliknięciu w powiadomienie
+- Theme WhatsApp (zasoby wspólne: App.xaml + Themes/ThemeWhatsApp.xaml)
 
 ---
 
-## 6. Aktualny backlog
+## 7. Aktualny backlog
 
 1. Status „ktoś pisze…”
-2. UI theme / palety kolorów
+2. UI theme / palety kolorów (dalsze dopieszczenie)
 3. Rozszerzone zarządzanie historią
 4. Uporządkowanie logowania serwera
 
 ---
 
-## 7. Zasada nadrzędna
+## 8. Zasada nadrzędna
 
-`src → test → commit → push → deploy → runtime`
+`src → test → backup → commit → push → deploy → runtime`
 
 Nigdy:
 - nie edytujemy runtime ręcznie
@@ -159,4 +180,4 @@ Nigdy:
 
 ---
 
-# FILE_VERSION_END: PROJECT_STATUS.md v1.4 (2026-02-26)
+# FILE_VERSION_END: PROJECT_STATUS.md v1.5 (2026-02-27)
