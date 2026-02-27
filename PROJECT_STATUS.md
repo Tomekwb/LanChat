@@ -1,183 +1,97 @@
-# FILE_VERSION: PROJECT_STATUS.md v1.5 (2026-02-27)
+# FILE_VERSION: PROJECT_STATUS.md v1.6 (2026-02-27)
 
-# LanChat – Project Status
-
----
+# LanChat -- Project Status
 
 ## 1. Aktualna wersja produkcyjna
 
 ### Klient
+
 Wersja produkcyjna: **1.0.16.0**
 
-- Auto-update działa (ZIP + SHA256 + walidacja wersji EXE)
-- Aktualizacja przy starcie klienta
-- Reconnect po restarcie serwera działa poprawnie
+-   Auto-update działa (ZIP + SHA256 + walidacja wersji EXE)
+-   Aktualizacja przy starcie klienta
+-   Reconnect po restarcie serwera działa poprawnie
 
-**Zasada AutoUpdate (DEV vs PROD):**
-- **DEBUG / `dotnet run`**: AutoUpdate **WYŁĄCZONY**
-- **RELEASE / produkcja**: AutoUpdate **WŁĄCZONY**
+Zasada AutoUpdate (DEV vs PROD): - DEBUG / dotnet run: WYŁĄCZONY -
+RELEASE: WŁĄCZONY
 
-Implementacja (w `MainWindow.xaml.cs`):
-
-```csharp
-#if DEBUG
-private static readonly bool EnableAutoUpdate = false;
-#else
-private static readonly bool EnableAutoUpdate = true;
-#endif
-```
+------------------------------------------------------------------------
 
 ### Serwer
-- Uruchamiany jako **Windows Service**
-- Nazwa usługi: `LanChatServer`
-- Binarka produkcyjna: `C:\LanChat\runtime\server\app\LanChatServer.exe`
-- Recovery włączone (auto-restart po awarii)
-- Test HTTP lokalny: `http://127.0.0.1:5001/`
 
----
+-   Windows Service: LanChatServer
+-   Binarka:
+    C:`\LanChat`{=tex}`\runtime`{=tex}`\server`{=tex}`\app`{=tex}`\LanChatServer`{=tex}.exe
+-   Recovery włączone
+-   Test HTTP: http://127.0.0.1:5001/
 
-## 2. Architektura (stan obowiązujący)
+------------------------------------------------------------------------
 
-### Repo (development)
-`C:\LanChat\src`
+## 2. Architektura
 
-Zawiera:
-- LanChatClient (WPF)
-- LanChatServer (ASP.NET Core + SignalR)
-- LanChatUpdater
-- tools (Publish-LanChat.ps1, Deploy-LanChatServer.ps1, **Backup-LanChat.ps1**)
-- installer
-- dokumentację
+Repo: C:`\LanChat`{=tex}`\src  `{=tex} Runtime:
+C:`\LanChat`{=tex}`\runtime`{=tex}`\server  `{=tex} Backup:
+C:`\LanChatBackup  `{=tex}
 
-Repo **NIE** zawiera:
-- runtime
-- SQLite
-- uploadów
-- ZIP produkcyjnych
-- logów
-
----
-
-### Runtime (produkcja)
-`C:\LanChat\runtime\server`
-
-Zawiera:
-- `Updates\`
-- `Data\lanchat.db`
-- `Files\`
-- `logs\`
-- `publish_log.txt`
-- `CHANGELOG.md`
-- `app\LanChatServer.exe`
-
-Runtime jest środowiskiem wykonawczym. **Nie podlega wersjonowaniu w Git.**
-
----
+------------------------------------------------------------------------
 
 ## 3. Model pracy
 
 ### Development
-Zmiany wprowadzamy wyłącznie w: `C:\LanChat\src`
 
-Testy lokalne:
-
-Serwer (DEV):
-```bat
-cd /d C:\LanChat\src\LanChatServer
+Serwer: cd /d C:`\LanChat`{=tex}`\src`{=tex}`\LanChatServer`{=tex}
 dotnet run
-```
 
-Klient (DEV):
-```bat
-cd /d C:\LanChat\src\LanChatClient\LanChatClient
+Klient: cd /d
+C:`\LanChat`{=tex}`\src`{=tex}`\LanChatClient`{=tex}`\LanChatClient`{=tex}
 dotnet run
-```
 
----
+------------------------------------------------------------------------
 
-### Deploy klienta
-Skrypt: `Publish-LanChat.ps1`
+## 4. Backup
 
-Efekt:
-- budowa klienta
-- ZIP
-- `version.json`
-- zapis do: `C:\LanChat\runtime\server\Updates`
+pwsh -NoProfile -ExecutionPolicy Bypass -File
+"C:`\LanChat`{=tex}`\src`{=tex}`\LanChatServer`{=tex}`\tools`{=tex}`\Backup`{=tex}-LanChat.ps1"
 
----
+Backup obejmuje: - src (bez .git/bin/obj) -
+runtime`\server `{=tex}(pełny) - MANIFEST.txt
 
-### Deploy serwera
-Skrypt: `Deploy-LanChatServer.ps1`
+------------------------------------------------------------------------
 
-Efekt:
-- stop usługi
-- backup EXE (w runtime)
-- `dotnet publish`
-- kopia do `runtime\server\app`
-- start usługi
-- smoke test HTTP
+## 5. Deploy serwera
 
----
+pwsh -NoProfile -ExecutionPolicy Bypass -File
+"C:`\LanChat`{=tex}`\src`{=tex}`\LanChatServer`{=tex}`\tools`{=tex}`\Deploy`{=tex}-LanChatServer.ps1"
 
-## 4. Backup – standard obowiązujący
+sc.exe query LanChatServer
 
-**Jedyna lokalizacja backupów:**  
-`C:\LanChatBackup\LanChat_BACKUP_YYYYMMDD_HHMMSS\`
+------------------------------------------------------------------------
 
-Backup zawsze obejmuje:
-- `src` snapshot (bez `.git`, `bin`, `obj`)
-- `runtime\server` snapshot (pełny: Data/Files/Updates/logs/app)
-- `MANIFEST.txt` (SHA256 + bytes + ścieżka)
+## 6. Publish klienta
 
-Skrypt:
-`C:\LanChat\src\LanChatServer\tools\Backup-LanChat.ps1`
+pwsh -NoProfile -ExecutionPolicy Bypass -File
+"C:`\LanChat`{=tex}`\src`{=tex}`\LanChatServer`{=tex}`\tools`{=tex}`\Publish`{=tex}-LanChat.ps1"
 
-Uruchomienie:
-```bat
-pwsh -NoProfile -ExecutionPolicy Bypass -File "C:\LanChat\src\LanChatServer\tools\Backup-LanChat.ps1"
-```
+------------------------------------------------------------------------
 
----
+## 7. Build instalatora
 
-## 5. Stabilne elementy systemu
+"C:`\Users`{=tex}`\Tomek`{=tex}`\AppData`{=tex}`\Local`{=tex}`\Programs`{=tex}`\Inno `{=tex}Setup
+6`\ISCC`{=tex}.exe"
+"C:`\LanChat`{=tex}`\src`{=tex}`\installer`{=tex}`\LanChatSetup`{=tex}.iss"
 
-- SignalR chat
-- Durable messages (offline queue)
-- SQLite persistence
-- Auto-update klienta
-- Wysyłanie plików
-- Serwer jako Windows Service
-- Recovery po crashu
-- Oddzielenie src od runtime
+Output:
+C:`\LanChat`{=tex}`\src`{=tex}`\installer`{=tex}`\Output`{=tex}`\LanChat`{=tex}\_Setup.exe
 
----
+------------------------------------------------------------------------
 
-## 6. Zamknięte tematy
+## 8. Oficjalna kolejność release
 
-- Reconnect po restarcie serwera
-- Bug podwójnej wiadomości po kliknięciu w powiadomienie
-- Theme WhatsApp (zasoby wspólne: App.xaml + Themes/ThemeWhatsApp.xaml)
+1.  Backup
+2.  git commit
+3.  git push
+4.  Deploy serwera
+5.  Publish klienta
+6.  Build instalatora
 
----
-
-## 7. Aktualny backlog
-
-1. Status „ktoś pisze…”
-2. UI theme / palety kolorów (dalsze dopieszczenie)
-3. Rozszerzone zarządzanie historią
-4. Uporządkowanie logowania serwera
-
----
-
-## 8. Zasada nadrzędna
-
-`src → test → backup → commit → push → deploy → runtime`
-
-Nigdy:
-- nie edytujemy runtime ręcznie
-- nie testujemy nowych zmian bezpośrednio na usłudze produkcyjnej
-- nie commitujemy runtime do Git
-
----
-
-# FILE_VERSION_END: PROJECT_STATUS.md v1.5 (2026-02-27)
+# FILE_VERSION_END: PROJECT_STATUS.md v1.6 (2026-02-27)
