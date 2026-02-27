@@ -3,19 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Rozmowa" Height="520" Width="520"
         WindowStartupLocation="CenterOwner"
-        Icon="pack://application:,,,/Assets/chat.ico">
+        Icon="pack://application:,,,/Assets/chat.ico"
+        Background="{DynamicResource BrushBackground}"
+        FontFamily="Segoe UI">
 
     <Window.Resources>
-        <SolidColorBrush x:Key="Accent" Color="#2D89EF"/>
-        <SolidColorBrush x:Key="Bg" Color="#F5F6F8"/>
-        <SolidColorBrush x:Key="Panel" Color="White"/>
-        <SolidColorBrush x:Key="Border" Color="#DADCE0"/>
 
-        <SolidColorBrush x:Key="BubbleMine" Color="#2D89EF"/>
-        <SolidColorBrush x:Key="BubbleOther" Color="#E8EAED"/>
-        <SolidColorBrush x:Key="TextMine" Color="White"/>
-        <SolidColorBrush x:Key="TextOther" Color="#202124"/>
-
+        <!-- Item alignment: my messages to the right -->
         <Style x:Key="MessageItemStyle" TargetType="{x:Type ListBoxItem}">
             <Setter Property="Padding" Value="0"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -29,18 +23,22 @@
             </Style.Triggers>
         </Style>
 
+        <!-- Message bubble template (text or file) -->
         <DataTemplate x:Key="MessageTemplate">
             <Border x:Name="Bubble"
-                    Background="{StaticResource BubbleOther}"
-                    CornerRadius="12"
+                    Background="{DynamicResource BrushIncomingBubble}"
+                    CornerRadius="14"
                     Padding="10"
                     Margin="0,3"
-                    MaxWidth="360">
+                    MaxWidth="360"
+                    BorderBrush="{DynamicResource BrushBorder}"
+                    BorderThickness="0">
 
                 <StackPanel>
                     <TextBlock x:Name="Meta"
                                FontSize="11"
-                               Opacity="0.7"
+                               Foreground="{DynamicResource BrushSubtleText}"
+                               Opacity="0.9"
                                Text="{Binding Meta}"
                                Margin="0,0,0,3"/>
 
@@ -51,7 +49,7 @@
                              BorderThickness="0"
                              Background="Transparent"
                              TextWrapping="Wrap"
-                             Foreground="{StaticResource TextOther}"
+                             Foreground="{DynamicResource BrushText}"
                              Padding="0"
                              Margin="0"
                              IsReadOnlyCaretVisible="False"/>
@@ -60,30 +58,44 @@
                     <Button x:Name="FileButton"
                             Visibility="Collapsed"
                             Margin="0,2,0,0"
-                            Padding="10,4"
+                            Padding="10,6"
                             Content="{Binding FileLabel}"
                             Click="OpenFile_Click"
-                            Tag="{Binding FileUrl}"/>
+                            Tag="{Binding FileUrl}"
+                            Background="{DynamicResource BrushPanel}"
+                            Foreground="{DynamicResource BrushText}"
+                            BorderBrush="{DynamicResource BrushBorder}"
+                            BorderThickness="1"/>
                 </StackPanel>
             </Border>
 
             <DataTemplate.Triggers>
+                <!-- My message bubble -->
                 <DataTrigger Binding="{Binding IsMine}" Value="True">
-                    <Setter TargetName="Bubble" Property="Background" Value="{StaticResource BubbleMine}"/>
-                    <Setter TargetName="Meta" Property="Foreground" Value="{StaticResource TextMine}"/>
-                    <Setter TargetName="BodyBox" Property="Foreground" Value="{StaticResource TextMine}"/>
+                    <Setter TargetName="Bubble" Property="Background" Value="{DynamicResource BrushOutgoingBubble}"/>
+                    <Setter TargetName="Meta" Property="Foreground" Value="{DynamicResource BrushSubtleText}"/>
+                    <Setter TargetName="BodyBox" Property="Foreground" Value="{DynamicResource BrushText}"/>
                 </DataTrigger>
 
+                <!-- File message -->
                 <DataTrigger Binding="{Binding IsFile}" Value="True">
                     <Setter TargetName="BodyBox" Property="Visibility" Value="Collapsed"/>
                     <Setter TargetName="FileButton" Property="Visibility" Value="Visible"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
+
     </Window.Resources>
 
-    <Grid Margin="10" Background="{StaticResource Bg}">
-        <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="6" Padding="10">
+    <!-- Paper-like background for chat -->
+    <Grid Margin="12" Background="{DynamicResource BrushChatPaper}">
+        <Border Background="{DynamicResource BrushPanel}"
+                BorderBrush="{DynamicResource BrushBorder}"
+                BorderThickness="1"
+                CornerRadius="14"
+                Padding="12"
+                Effect="{DynamicResource ShadowSoft}">
+
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -91,41 +103,53 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
+                <!-- Header -->
                 <Grid Grid.Row="0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" x:Name="TitleText" FontWeight="Bold" Text="Rozmowa" />
+                    <TextBlock Grid.Column="0"
+                               x:Name="TitleText"
+                               FontWeight="SemiBold"
+                               FontSize="14"
+                               Text="Rozmowa"
+                               VerticalAlignment="Center"/>
 
                     <Button Grid.Column="1"
                             Content="Usuń historię"
                             Margin="10,0,0,0"
-                            Padding="10,2"
+                            Padding="12,6"
+                            Background="#FFF2F4F5"
+                            Foreground="{DynamicResource BrushText}"
+                            BorderBrush="{DynamicResource BrushBorder}"
+                            BorderThickness="1"
                             Click="DeleteHistory_Click"/>
                 </Grid>
 
+                <!-- Messages -->
                 <ListBox Grid.Row="1"
                          x:Name="ChatList"
-                         Margin="0,8,0,8"
+                         Margin="0,10,0,10"
                          Background="Transparent"
                          BorderThickness="0"
                          ItemTemplate="{StaticResource MessageTemplate}"
                          ItemContainerStyle="{StaticResource MessageItemStyle}"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
 
+                <!-- Composer -->
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="90"/>
                         <ColumnDefinition Width="110"/>
                     </Grid.ColumnDefinitions>
 
                     <TextBox x:Name="MessageText"
                              Grid.Column="0"
                              Margin="0,0,10,0"
-                             MinHeight="60"
+                             MinHeight="54"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto"
@@ -133,14 +157,18 @@
 
                     <Button Content="Plik…"
                             Grid.Column="1"
-                            Height="32"
+                            Height="38"
                             Margin="0,0,10,0"
+                            Background="#FFF2F4F5"
+                            Foreground="{DynamicResource BrushText}"
+                            BorderBrush="{DynamicResource BrushBorder}"
+                            BorderThickness="1"
                             Click="SendFile_Click"/>
 
                     <Button Content="Wyślij"
                             Grid.Column="2"
-                            Height="32"
-                            Background="{StaticResource Accent}"
+                            Height="38"
+                            Background="{DynamicResource BrushPrimary}"
                             Foreground="White"
                             BorderThickness="0"
                             Click="Send_Click"/>
