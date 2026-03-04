@@ -1,10 +1,20 @@
-; FILE_VERSION: LanChatSetup.iss v1.2 (2026-02-22)
+; FILE_VERSION: LanChatSetup.iss v1.3 (2026-02-27)
 ; Universal installer: shortcuts + autostart for ALL USERS (common desktop + HKLM Run)
+
+#define Root "C:\LanChat"
+#define Src  Root + "\src"
+
+#define ClientPublish  Src + "\LanChatClient\LanChatClient\bin\Release\net8.0-windows\win-x64\publish"
+#define UpdaterPublish Src + "\LanChatClient\LanChatUpdater\bin\Release\net8.0-windows\win-x64\publish"
+
+#define ClientExe ClientPublish + "\LanChatClient.exe"
+#define AppVer GetVersionNumbersString(ClientExe)
 
 [Setup]
 AppName=LanChat
-AppVersion=bootstrap
-DefaultDirName=C:\LanChat
+AppVersion={#AppVer}
+AppPublisher=LanChat
+DefaultDirName={#Root}
 DisableDirPage=yes
 
 ; Start Menu folder for all users
@@ -18,17 +28,18 @@ SolidCompression=yes
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 
+; (opcjonalnie) ikona w "Programy i funkcje"
+UninstallDisplayIcon={app}\LanChatClient.exe
+
 [Languages]
 Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
 
 [Files]
-; Client publish (self-contained)
-Source: "C:\LanChat\src\LanChatClient\LanChatClient\bin\Release\net8.0-windows\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Client publish (self-contained / publish output)
+Source: "{#ClientPublish}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; Updater publish
-Source: "C:\LanChat\src\LanChatClient\LanChatUpdater\bin\Release\net8.0-windows\win-x64\publish\LanChatUpdater.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\LanChat\src\LanChatClient\LanChatUpdater\bin\Release\net8.0-windows\win-x64\publish\LanChatUpdater.deps.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\LanChat\src\LanChatClient\LanChatUpdater\bin\Release\net8.0-windows\win-x64\publish\LanChatUpdater.runtimeconfig.json"; DestDir: "{app}"; Flags: ignoreversion
+; Updater publish (kopiujemy CAŁOŚĆ, żeby nie brakowało dll/deps/runtimeconfig)
+Source: "{#UpdaterPublish}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 ; Start Menu for all users
@@ -44,4 +55,4 @@ Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 [Run]
 Filename: "{app}\LanChatClient.exe"; Description: "Uruchom LanChat"; Flags: nowait postinstall skipifsilent
 
-; FILE_VERSION_END: LanChatSetup.iss v1.2 (2026-02-22)
+; FILE_VERSION_END: LanChatSetup.iss v1.3 (2026-02-27)

@@ -23,7 +23,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Message bubble template (text or file) -->
+        <!-- Message bubble template (text or file or day-separator) -->
         <DataTemplate x:Key="MessageTemplate">
             <Border x:Name="Bubble"
                     Background="{DynamicResource BrushIncomingBubble}"
@@ -39,12 +39,14 @@
                                FontSize="11"
                                Foreground="{DynamicResource BrushSubtleText}"
                                Opacity="0.9"
-                               Text="{Binding Meta}"
+                               Text="{Binding Meta, Mode=OneWay}"
                                Margin="0,0,0,3"/>
 
-                    <!-- Zwykły tekst -->
+                    <!-- Zwykły tekst / separator -->
+                    <!-- UWAGA: TextBox domyślnie robi TwoWay, a DisplayBody jest read-only -> crash.
+                         Dlatego wymuszamy OneWay. -->
                     <TextBox x:Name="BodyBox"
-                             Text="{Binding Body}"
+                             Text="{Binding DisplayBody, Mode=OneWay}"
                              IsReadOnly="True"
                              BorderThickness="0"
                              Background="Transparent"
@@ -59,9 +61,9 @@
                             Visibility="Collapsed"
                             Margin="0,2,0,0"
                             Padding="10,6"
-                            Content="{Binding FileLabel}"
+                            Content="{Binding FileLabel, Mode=OneWay}"
                             Click="OpenFile_Click"
-                            Tag="{Binding FileUrl}"
+                            Tag="{Binding FileUrl, Mode=OneWay}"
                             Background="{DynamicResource BrushPanel}"
                             Foreground="{DynamicResource BrushText}"
                             BorderBrush="{DynamicResource BrushBorder}"
@@ -81,6 +83,12 @@
                 <DataTrigger Binding="{Binding IsFile}" Value="True">
                     <Setter TargetName="BodyBox" Property="Visibility" Value="Collapsed"/>
                     <Setter TargetName="FileButton" Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+
+                <!-- Day separator: hide meta+file button -->
+                <DataTrigger Binding="{Binding IsSeparator}" Value="True">
+                    <Setter TargetName="Meta" Property="Visibility" Value="Collapsed"/>
+                    <Setter TargetName="FileButton" Property="Visibility" Value="Collapsed"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>

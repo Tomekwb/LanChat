@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -19,44 +20,94 @@ public static class UpdateManager
     {
         // baseUrl: http://192.168.64.233:5001/updates
         var infoUrl = baseUrl.TrimEnd('/') + "/version.json";
+        var logPath = GetLogPath(installDir);
 
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-        var json = await http.GetStringAsync(infoUrl);
+        Log(logPath, $"=== CheckAndUpdateIfNeededAsync START ===");
+        Log(logPath, $"installDir={installDir}");
+        Log(logPath, $"infoUrl={infoUrl}");
+        Log(logPath, $"CurrentVersion(local)={CurrentVersion}");
 
-        var info = JsonSerializer.Deserialize<UpdateInfo>(json, new JsonSerializerOptions
+        try
         {
-            PropertyNameCaseInsensitive = true
-        });
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
 
-        if (info is null) return false;
+            Log(logPath, "Downloading version.json...");
+            var json = await http.GetStringAsync(infoUrl);
+            Log(logPath, $"version.json bytes={Encoding.UTF8.GetByteCount(json)}");
 
-        if (!IsNewer(info.version, CurrentVersion))
-            return false;
+            var info = JsonSerializer.Deserialize<UpdateInfo>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
 
-        Directory.CreateDirectory(installDir);
+            if (info is null)
+            {
+                Log(logPath, "ERROR: version.json deserialized to null.");
+                return false;
+            }
 
-        var tmpZip = Path.Combine(Path.GetTempPath(), "LanChatClient_update.zip");
+            Log(logPath, $"RemoteVersion={info.version}");
+            Log(logPath, $"zipUrl={info.zipUrl}");
+            Log(logPath, $"exeName={info.exeName}");
+            Log(logPath, $"sha256(remote)={info.sha256}");
 
-        var zipBytes = await http.GetByteArrayAsync(info.zipUrl);
-        await File.WriteAllBytesAsync(tmpZip, zipBytes);
+            if (!IsNewer(info.version, CurrentVersion))
+            {
+                Log(logPath, "No update needed (remote is not newer).");
+                return false;
+            }
 
-        var hash = Sha256File(tmpZip);
-        if (!hash.Equals(info.sha256, StringComparison.OrdinalIgnoreCase))
-            throw new Exception("SHA256 mismatch (plik aktualizacji uszkodzony lub nie ten).");
+            Directory.CreateDirectory(installDir);
+            Directory.CreateDirectory(Path.Combine(installDir, "log"));
 
-        // Updater.exe musi być obok klienta (w installDir)
-        var updater = Path.Combine(installDir, "LanChatUpdater.exe");
-        if (!File.Exists(updater))
-            throw new Exception("Brak LanChatUpdater.exe w " + installDir);
+            var tmpZip = Path.Combine(Path.GetTempPath(), "LanChatClient_update.zip");
+            Log(logPath, $"Downloading ZIP to temp: {tmpZip}");
 
-        Process.Start(new ProcessStartInfo
+            var zipBytes = await http.GetByteArrayAsync(info.zipUrl);
+            await File.WriteAllBytesAsync(tmpZip, zipBytes);
+            Log(logPath, $"ZIP downloaded, bytes={zipBytes.Length}");
+
+            var hash = Sha256File(tmpZip);
+            Log(logPath, $"sha256(localZip)={hash}");
+
+            if (!hash.Equals(info.sha256, StringComparison.OrdinalIgnoreCase))
+            {
+                Log(logPath, "ERROR: SHA256 mismatch.");
+                throw new Exception("SHA256 mismatch (plik aktualizacji uszkodzony lub nie ten).");
+            }
+
+            // Updater.exe musi być obok klienta (w installDir)
+            var updater = Path.Combine(installDir, "LanChatUpdater.exe");
+            Log(logPath, $"Looking for updater: {updater}");
+
+            if (!File.Exists(updater))
+            {
+                Log(logPath, "ERROR: Missing LanChatUpdater.exe.");
+                throw new Exception("Brak LanChatUpdater.exe w " + installDir);
+            }
+
+            var args = $"\"{tmpZip}\" \"{installDir}\" \"{info.exeName}\"";
+            Log(logPath, $"Starting updater: {updater} {args}");
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = updater,
+                Arguments = args,
+                UseShellExecute = true
+            });
+
+            Log(logPath, "Updater started OK. Returning true.");
+            return true; // caller powinien zamknąć klienta
+        }
+        catch (Exception ex)
         {
-            FileName = updater,
-            Arguments = $"\"{tmpZip}\" \"{installDir}\" \"{info.exeName}\"",
-            UseShellExecute = true
-        });
-
-        return true; // klient powinien się zamknąć po uruchomieniu updatera
+            Log(logPath, "EXCEPTION: " + ex);
+            throw;
+        }
+        finally
+        {
+            Log(logPath, $"=== CheckAndUpdateIfNeededAsync END ===");
+        }
     }
 
     private static bool IsNewer(string remote, string local)
@@ -74,5 +125,25 @@ public static class UpdateManager
         using var fs = File.OpenRead(path);
         var hash = sha.ComputeHash(fs);
         return Convert.ToHexString(hash);
+    }
+
+    private static string GetLogPath(string installDir)
+        => Path.Combine(installDir, "log", "update.log");
+
+    private static void Log(string logPath, string message)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(logPath);
+            if (!string.IsNullOrWhiteSpace(dir))
+                Directory.CreateDirectory(dir);
+
+            var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
+            File.AppendAllText(logPath, line, Encoding.UTF8);
+        }
+        catch
+        {
+            // logging nie może wywalić update
+        }
     }
 }

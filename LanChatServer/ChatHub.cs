@@ -79,12 +79,13 @@ public class ChatHub : Hub
 
         if (undelivered.Count > 0)
         {
-            var now = DateTime.UtcNow;
+            var deliveredAt = DateTime.UtcNow;
 
             foreach (var m in undelivered)
             {
-                await Clients.Caller.SendAsync("PrivateMessage", m.FromUser, m.Body);
-                m.DeliveredAtUtc = now;
+                // WAŻNE: przekazujemy timestamp z bazy (UTC), żeby klient mógł wyświetlić poprawny czas
+                await Clients.Caller.SendAsync("PrivateMessage", m.FromUser, m.Body, m.SentAtUtc);
+                m.DeliveredAtUtc = deliveredAt;
             }
 
             await _db.SaveChangesAsync();
@@ -132,12 +133,15 @@ public class ChatHub : Hub
             conns != null &&
             !conns.IsEmpty;
 
+        // JEDEN timestamp - źródło prawdy (UTC)
+        var sentAtUtc = DateTime.UtcNow;
+
         var msg = new ChatMessage
         {
             FromUser = fromUser,
             ToUser = toUser,
             Body = message,
-            SentAtUtc = DateTime.UtcNow,
+            SentAtUtc = sentAtUtc,
             DeliveredAtUtc = recipientOnline ? DateTime.UtcNow : null
         };
 
@@ -147,7 +151,8 @@ public class ChatHub : Hub
         if (recipientOnline)
         {
             // wysyłamy do grupy usera (działa też przy multi-conn)
-            await Clients.Group(toUser).SendAsync("PrivateMessage", fromUser, message);
+            // WAŻNE: trzeci parametr to timestamp UTC
+            await Clients.Group(toUser).SendAsync("PrivateMessage", fromUser, message, sentAtUtc);
         }
     }
 

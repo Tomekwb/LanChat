@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
@@ -47,8 +48,8 @@ public partial class MainWindow : Window
     private const string UpdatesBaseUrl = "http://192.168.64.233:5001/updates";
     private const string InstallDir = @"C:\LanChat";
 
-    // Włącz na stacji testowej. Dopiero po potwierdzeniu działania — rollout na resztę.
-    private const bool EnableAutoUpdate = true;
+    // AUTO-UPDATE ZAWSZE WŁĄCZONY (niezależnie od DEBUG/RELEASE)
+    private static readonly bool EnableAutoUpdate = true;
 
     private readonly string _cfgDir =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LanChat");
@@ -59,8 +60,8 @@ public partial class MainWindow : Window
 
     private readonly Dictionary<string, ChatWindow> _chatWindows = new(StringComparer.OrdinalIgnoreCase);
 
-    // bufor wiadomości dla okien nieotwartych
-    private readonly Dictionary<string, List<(DateTime ts, string from, string msg)>> _pending =
+    // bufor wiadomości dla okien nieotwartych (UTC)
+    private readonly Dictionary<string, List<(DateTime tsUtc, string from, string msg)>> _pending =
         new(StringComparer.OrdinalIgnoreCase);
 
     private readonly HashSet<string> _historyLoaded = new(StringComparer.OrdinalIgnoreCase);
@@ -81,6 +82,20 @@ public partial class MainWindow : Window
 
     private static string AppVersion =>
         (Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0");
+
+    private static string BuildTag
+    {
+        get
+        {
+#if DEBUG
+            return "DEBUG";
+#else
+            return "RELEASE";
+#endif
+        }
+    }
+
+    private static string UpdateLogPath => Path.Combine(InstallDir, "log", "update.log");
 
     public MainWindow()
     {
@@ -110,8 +125,8 @@ public partial class MainWindow : Window
         // nie blokujemy UI w konstruktorze
         Loaded += async (_, __) => await StartupAsync();
 
-        Title = $"LAN Chat v{AppVersion}";
-        StatusText.Text = $"Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+        Title = $"LAN Chat v{AppVersion} ({BuildTag})";
+        StatusText.Text = $"Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion} ({BuildTag})";
     }
 
     private async Task StartupAsync()
@@ -120,7 +135,8 @@ public partial class MainWindow : Window
         {
             try
             {
-                StatusText.Text = $"Sprawdzam aktualizacje... | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+                StatusText.Text = $"Sprawdzam aktualizacje... | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion} ({BuildTag})";
+                LogUpdate($"Startup: checking updates. v={AppVersion} build={BuildTag} user={_me} machine={_machine}");
 
                 var updated = await UpdateManager.CheckAndUpdateIfNeededAsync(
                     UpdatesBaseUrl,
@@ -131,6 +147,8 @@ public partial class MainWindow : Window
                 // inaczej pliki w InstallDir będą zablokowane.
                 if (updated)
                 {
+                    LogUpdate("Startup: updater started -> shutting down client.");
+
                     _realExit = true;
 
                     try { _blinkTimer.Stop(); } catch { }
@@ -139,11 +157,14 @@ public partial class MainWindow : Window
                     Application.Current.Shutdown();
                     return;
                 }
+
+                LogUpdate("Startup: no update needed.");
             }
             catch (Exception ex)
             {
                 // Nie blokujemy startu chatu, jeśli update ma problem — pokaż status i idziemy dalej.
-                StatusText.Text = $"AutoUpdate: błąd: {ex.Message} | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+                StatusText.Text = $"AutoUpdate: błąd: {ex.Message} | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion} ({BuildTag})";
+                LogUpdate("Startup: AutoUpdate exception: " + ex);
             }
         }
 
@@ -153,8 +174,7 @@ public partial class MainWindow : Window
     protected override void OnStateChanged(EventArgs e)
     {
         base.OnStateChanged(e);
-        if (WindowState == WindowState.Minimized)
-            Hide();
+        // TEST: nie chowaj okna przy minimalizacji
     }
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -223,7 +243,7 @@ public partial class MainWindow : Window
 
         _me = name;
         File.WriteAllText(_cfgFile, _me);
-        StatusText.Text = $"Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+        StatusText.Text = $"Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion} ({BuildTag})";
     }
 
     private void ChangeName_Click(object sender, RoutedEventArgs e)
@@ -255,7 +275,7 @@ public partial class MainWindow : Window
             {
                 Dispatcher.Invoke(() =>
                 {
-                    StatusText.Text = $"Łączenie ponownie... {(error?.Message ?? "")} | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+                    StatusText.Text = $"Łączenie ponownie... {(error?.Message ?? "")} | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion} ({BuildTag})";
                 });
                 return Task.CompletedTask;
             };
@@ -270,14 +290,14 @@ public partial class MainWindow : Window
 
                     Dispatcher.Invoke(() =>
                     {
-                        StatusText.Text = $"Połączono ponownie. Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+                        StatusText.Text = $"Połączono ponownie. Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion} ({BuildTag})";
                     });
                 }
                 catch (Exception ex)
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        StatusText.Text = $"Reconnect OK, ale Register nie wyszedł: {ex.Message} | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+                        StatusText.Text = $"Reconnect OK, ale Register nie wyszedł: {ex.Message} | Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion} ({BuildTag})";
                     });
                 }
             };
@@ -309,15 +329,15 @@ public partial class MainWindow : Window
                 });
             });
 
-            // wiadomości prywatne (z serwera)
-            _conn.On<string, string>("PrivateMessage", (from, msg) =>
+            // wiadomości prywatne (z serwera) - wymagany timestamp UTC
+            _conn.On<string, string, DateTime>("PrivateMessage", (from, msg, sentAtUtc) =>
             {
                 Dispatcher.Invoke(() =>
                 {
                     // Jeśli okno czatu już istnieje -> dodaj tylko do UI (NIE do _pending)
                     if (_chatWindows.TryGetValue(from, out var win))
                     {
-                        win.AddMessage(from, msg);
+                        win.AddMessage(from, msg, sentAtUtc);
 
                         if (win.IsActive)
                         {
@@ -335,11 +355,11 @@ public partial class MainWindow : Window
                     // Jeśli okna nie ma -> buforuj
                     if (!_pending.TryGetValue(from, out var buf))
                     {
-                        buf = new List<(DateTime ts, string from, string msg)>();
+                        buf = new List<(DateTime tsUtc, string from, string msg)>();
                         _pending[from] = buf;
                     }
 
-                    buf.Add((DateTime.Now, from, msg));
+                    buf.Add((sentAtUtc, from, msg));
                     MarkUnread(from, $"{from}: {msg}");
                 });
             });
@@ -351,7 +371,7 @@ public partial class MainWindow : Window
 
             Dispatcher.Invoke(() =>
             {
-                StatusText.Text = $"Połączono. Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion}";
+                StatusText.Text = $"Połączono. Użytkownik: {_me} | Komputer: {_machine} | v{AppVersion} ({BuildTag})";
             });
         }
         catch (Exception ex)
@@ -523,7 +543,7 @@ public partial class MainWindow : Window
             var history = await _conn.InvokeAsync<List<HistoryItem>>("GetHistory", otherUser, 50);
 
             foreach (var h in history)
-                win.AddMessage(h.FromUser, h.Body);
+                win.AddMessage(h.FromUser, h.Body, h.SentAtUtc);
 
             _historyLoaded.Add(otherUser);
         }
@@ -535,7 +555,7 @@ public partial class MainWindow : Window
         if (_pending.TryGetValue(user, out var buf))
         {
             foreach (var item in buf)
-                win.AddMessage(item.from, item.msg);
+                win.AddMessage(item.from, item.msg, item.tsUtc);
         }
     }
 
@@ -578,5 +598,22 @@ public partial class MainWindow : Window
     {
         if (UsersList.SelectedItem is ClientPresence p)
             OpenChat(p.User);
+    }
+
+    private static void LogUpdate(string message)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(UpdateLogPath);
+            if (!string.IsNullOrWhiteSpace(dir))
+                Directory.CreateDirectory(dir);
+
+            var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
+            File.AppendAllText(UpdateLogPath, line, Encoding.UTF8);
+        }
+        catch
+        {
+            // log nie może wysypać appki
+        }
     }
 }

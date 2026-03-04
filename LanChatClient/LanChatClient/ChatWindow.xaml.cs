@@ -2,9 +2,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,7 +14,9 @@ public partial class ChatWindow : Window
 {
     public class ChatMessage
     {
-        public DateTime Time { get; set; }
+        // UWAGA: trzymamy UTC (spójnie z serwerem), a do wyświetlania robimy ToLocalTime()
+        public DateTime TimeUtc { get; set; }
+
         public string From { get; set; } = "";
         public string Body { get; set; } = "";
         public bool IsMine { get; set; }
@@ -27,7 +26,21 @@ public partial class ChatWindow : Window
         public long FileSize { get; set; }
         public string FileUrl { get; set; } = "";
 
-        public string Meta => $"{Time:HH:mm} {From}";
+        // separator dnia
+        public bool IsSeparator { get; set; }
+        public string SeparatorText { get; set; } = "";
+
+        public string Meta
+        {
+            get
+            {
+                if (IsSeparator) return "";
+                return $"{FormatTime(TimeUtc)} {From}";
+            }
+        }
+
+        public string DisplayBody => IsSeparator ? SeparatorText : Body;
+
         public string FileLabel => $"Pobierz: {FileName} ({FormatBytes(FileSize)})";
 
         private static string FormatBytes(long bytes)
@@ -37,6 +50,23 @@ public partial class ChatWindow : Window
             int i = 0;
             while (b >= 1024 && i < suf.Length - 1) { b /= 1024; i++; }
             return b.ToString("0.##", CultureInfo.InvariantCulture) + " " + suf[i];
+        }
+
+        private static string FormatTime(DateTime utc)
+        {
+            var local = DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToLocalTime();
+            var now = DateTime.Now;
+
+            if (local.Date == now.Date)
+                return local.ToString("HH:mm");
+
+            if (local.Date == now.Date.AddDays(-1))
+                return "Wczoraj " + local.ToString("HH:mm");
+
+            if (local.Year == now.Year)
+                return local.ToString("dd.MM HH:mm");
+
+            return local.ToString("dd.MM.yyyy HH:mm");
         }
     }
 
@@ -55,6 +85,9 @@ public partial class ChatWindow : Window
     private readonly Action<string> _onClosed;
 
     private readonly ObservableCollection<ChatMessage> _messages = new();
+
+    // żeby separator dnia nie dublował się
+    private DateTime? _lastSeparatorLocalDate = null;
 
     public ChatWindow(
         string me,
@@ -87,20 +120,54 @@ public partial class ChatWindow : Window
         MessageText.Focus();
     }
 
-    public void AddMessage(string from, string msg)
+    // kompatybilność: jak ktoś jeszcze woła AddMessage(from,msg)
+    public void AddMessage(string from, string msg) => AddMessage(from, msg, DateTime.UtcNow);
+
+    // NOWE: AddMessage z timestampem UTC (z serwera / bazy)
+    public void AddMessage(string from, string msg, DateTime sentAtUtc)
     {
-        var cm = ParseMessage(from, msg);
+        AddDaySeparatorIfNeeded(sentAtUtc);
+
+        var cm = ParseMessage(from, msg, sentAtUtc);
         _messages.Add(cm);
 
         if (ChatList.Items.Count > 0)
             ChatList.ScrollIntoView(ChatList.Items[ChatList.Items.Count - 1]);
     }
 
-    private ChatMessage ParseMessage(string from, string msg)
+    private void AddDaySeparatorIfNeeded(DateTime sentAtUtc)
+    {
+        var localDate = DateTime.SpecifyKind(sentAtUtc, DateTimeKind.Utc).ToLocalTime().Date;
+
+        if (_lastSeparatorLocalDate.HasValue && _lastSeparatorLocalDate.Value == localDate)
+            return;
+
+        _lastSeparatorLocalDate = localDate;
+
+        var label = FormatDayLabel(localDate);
+
+        _messages.Add(new ChatMessage
+        {
+            IsSeparator = true,
+            SeparatorText = $"----- {label} -----",
+            TimeUtc = sentAtUtc
+        });
+    }
+
+    private static string FormatDayLabel(DateTime localDate)
+    {
+        var today = DateTime.Now.Date;
+        if (localDate == today) return "Dzisiaj";
+        if (localDate == today.AddDays(-1)) return "Wczoraj";
+        if (localDate.Year == today.Year) return localDate.ToString("dd.MM");
+        return localDate.ToString("dd.MM.yyyy");
+    }
+
+    private ChatMessage ParseMessage(string from, string msg, DateTime sentAtUtc)
     {
         var cm = new ChatMessage
         {
-            Time = DateTime.Now,
+            TimeUtc = DateTime.SpecifyKind(sentAtUtc, DateTimeKind.Utc),
             From = from,
             IsMine = from.Equals(_me, StringComparison.OrdinalIgnoreCase),
             Body = msg ?? ""
@@ -142,7 +209,9 @@ public partial class ChatWindow : Window
         var msg = MessageText.Text ?? "";
         if (string.IsNullOrWhiteSpace(msg)) return;
 
-        AddMessage(_me, msg);
+        // czas wysłania u nadawcy: UTC, żeby Meta działało spójnie
+        AddMessage(_me, msg, DateTime.UtcNow);
+
         _send(_peer, msg);
 
         MessageText.Clear();
@@ -163,6 +232,7 @@ public partial class ChatWindow : Window
         {
             var deleted = await _deleteHistory(_peer);
             _messages.Clear();
+            _lastSeparatorLocalDate = null;
             MessageBox.Show($"Usunięto {deleted} wiadomości.", "LanChat");
             MessageText.Focus();
         }
@@ -188,8 +258,8 @@ public partial class ChatWindow : Window
             // upload i dostajemy body (LCFILE|...)
             var body = await _uploadFile(_me, _peer, dlg.FileName);
 
-            // pokaż u siebie od razu
-            AddMessage(_me, body);
+            // pokaż u siebie od razu (UTC)
+            AddMessage(_me, body, DateTime.UtcNow);
         }
         catch (Exception ex)
         {
