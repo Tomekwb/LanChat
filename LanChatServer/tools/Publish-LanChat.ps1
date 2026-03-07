@@ -1,19 +1,23 @@
-# FILE_VERSION: Publish-LanChat.ps1 v1.1 (2026-02-20)
+# FILE_VERSION: Publish-LanChat.ps1 v1.3 (2026-03-04)
 # Purpose: Publish client+updater -> ZIP + version.json (runtime Updates), with SHA256 and version verification.
-# Note: ProductVersion may include "+<git-hash>" (InformationalVersion). We compare only the prefix before '+'.
+# Safety: Verifies that the ZIP is SELF-CONTAINED by checking for core host/runtime binaries inside the ZIP payload.
+# Notes:
+#  - Self-contained .NET publishes do NOT necessarily include "shared\Microsoft.*" folders. Those are typical for installed runtimes.
+#  - For WPF self-contained we expect (at minimum) hostfxr.dll + hostpolicy.dll + coreclr.dll (+ usually clrjit.dll) next to the EXE.
 
 #requires -Version 5.1
 [CmdletBinding()]
 param(
-  # === NOWE DOMYŚLNE ŚCIEŻKI (po przeniesieniu do repo) ===
   [string]$ClientProjDir  = "C:\LanChat\src\LanChatClient\LanChatClient",
   [string]$UpdaterProjDir = "C:\LanChat\src\LanChatClient\LanChatUpdater",
 
-  # === RUNTIME (poza repo) ===
   [string]$UpdatesDir     = "C:\LanChat\runtime\server\Updates",
 
   [string]$BaseUpdatesUrl = "http://192.168.64.233:5001/updates",
-  [string]$ExeName        = "LanChatClient.exe"
+  [string]$ExeName        = "LanChatClient.exe",
+
+  # If true, we abort publish when ZIP doesn't look self-contained.
+  [switch]$RequireSelfContained = $true
 )
 
 Set-StrictMode -Version Latest
@@ -68,7 +72,6 @@ function Get-PublishDir([string]$projDir) {
 
 function Normalize-VersionString([string]$v) {
   if ([string]::IsNullOrWhiteSpace($v)) { return $v }
-  # InformationalVersion often is "1.0.8+<hash>" -> we compare only prefix
   return ($v.Split('+')[0]).Trim()
 }
 
@@ -78,7 +81,29 @@ function Get-ExeProductVersionNormalized([string]$exePath) {
   return (Normalize-VersionString $pv)
 }
 
-# --- LOCK (avoid running twice) ---
+function Assert-ZipLooksSelfContained([string]$expandedDir) {
+  # Minimal set of files that strongly indicate self-contained publish.
+  $must = @(
+    "hostfxr.dll",
+    "hostpolicy.dll",
+    "coreclr.dll",
+    "clrjit.dll"
+  )
+
+  $missing = @()
+  foreach ($m in $must) {
+    $p = Join-Path $expandedDir $m
+    if (!(Test-Path $p)) { $missing += $m }
+  }
+
+  if ($missing.Count -gt 0) {
+    $msg = "ZIP payload NIE wygląda na self-contained. Braki: " + ($missing -join ", ")
+    $msg += ". (Uwaga: jeśli włączysz single-file publish, ta weryfikacja wymaga dostosowania.)"
+    if ($RequireSelfContained) { throw $msg } else { Write-Log "WARN: $msg" }
+  }
+}
+
+# --- LOCK ---
 New-Item -ItemType Directory -Path $UpdatesDir -Force | Out-Null
 $lockPath = Join-Path $UpdatesDir "publish.lock"
 $lockStream = $null
@@ -147,8 +172,8 @@ try {
   New-Item -ItemType Directory -Path $stage | Out-Null
 
   try {
-    Copy-Item "$clientPub\*"  $stage -Recurse -Force
-    Copy-Item "$updaterPub\LanChatUpdater.*" $stage -Force
+    Copy-Item "$updaterPub\*" $stage -Recurse -Force
+	Copy-Item "$clientPub\*"  $stage -Recurse -Force
 
     $zipPath = Join-Path $UpdatesDir "LanChatClient.zip"
     if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
@@ -156,22 +181,23 @@ try {
     Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zipPath -Force
     $sha = (Get-FileHash $zipPath -Algorithm SHA256).Hash
 
-    # 1) VERIFY ZIP FIRST (avoid half-publish)
     $checkDir = Join-Path $env:TEMP ("ZipCheck_" + [guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $checkDir | Out-Null
     try {
       Expand-Archive -Path $zipPath -DestinationPath $checkDir -Force
+
       $exeInZip = Join-Path $checkDir $ExeName
       $pvNorm = Get-ExeProductVersionNormalized $exeInZip
       if ($pvNorm -ne $targetVer) {
         throw "MISMATCH: target=$targetVer but EXE in ZIP ProductVersion(normalized)=$pvNorm. Aborting publish."
       }
+
+      Assert-ZipLooksSelfContained $checkDir
     }
     finally {
       if (Test-Path $checkDir) { Remove-Item $checkDir -Recurse -Force }
     }
 
-    # 2) WRITE version.json AFTER successful verification
     $versionJsonPath = Join-Path $UpdatesDir "version.json"
     $json = @{
       version = $targetVer
@@ -212,4 +238,4 @@ finally {
   if ($lockStream) { $lockStream.Dispose() }
 }
 
-# FILE_VERSION_END: Publish-LanChat.ps1 v1.1 (2026-02-20)
+# FILE_VERSION_END: Publish-LanChat.ps1 v1.3 (2026-03-04)
