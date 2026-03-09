@@ -66,3 +66,23 @@ src → test → backup → commit → deploy → publish → installer → runt
 Runtime nigdy nie jest modyfikowany ręcznie.
 
 # FILE_VERSION_END: README.md v1.7 (2026-02-27)
+
+
+## Auto Update
+
+LanChat posiada wbudowany system aktualizacji.
+
+Mechanizm:
+
+1. klient pobiera version.json
+2. sprawdza SHA256
+3. pobiera ZIP
+4. uruchamia updater
+5. updater wykonuje atomic swap katalogów
+6. uruchamia się nowa wersja klienta
+
+Update jest odporny na:
+- blokady plików
+- częściowe instalacje
+- brak runtime .NET
+

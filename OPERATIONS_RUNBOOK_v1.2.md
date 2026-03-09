@@ -130,7 +130,34 @@ LanChat_Setup.exe
 
 
 
+# Troubleshooting – Update
 
+## Sprawdź log
+
+C:\ProgramData\LanChat\updater.log
+
+## Sprawdź serwer
+
+http://SERVER/updates/version.json
+
+## Ręczny bootstrap
+
+taskkill /F /IM LanChatClient.exe
+taskkill /F /IM LanChatUpdater.exe
+
+pobierz:
+http://SERVER/updates/LanChatClient.zip
+
+rozpakuj do:
+C:\LanChat
+
+## Sprawdź runtime
+
+hostfxr.dll
+coreclr.dll
+hostpolicy.dll
+
+Jeśli nie istnieją – ZIP jest niekompletny.
 
 
 Koniec dokumentu.
